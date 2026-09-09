@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Our Home</title>
+  <meta name="theme-color" content="#0f766e" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Our Home" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+
+  <link rel="icon" type="image/png" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./css/styles.css" />
+
+  <script type="importmap">
+  {
+    "imports": {
+      "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="config-banner" class="banner" hidden>
+    ⚠️ Supabase not configured — open <code>js/config.js</code> and add your Project URL + anon key
+  </div>
+
+  <!-- ===== Login ===== -->
+  <section id="login-view" class="view" hidden>
+    <div class="login-card">
+      <div class="brand">
+        <div class="brand-logo">🏠</div>
+        <h1>Our Home</h1>
+        <p class="muted">Sign in with your shared account</p>
+      </div>
+      <form id="login-form">
+        <label>Email
+          <input type="email" id="login-email" autocomplete="username" required placeholder="you@example.com" />
+        </label>
+        <label>Password
+          <input type="password" id="login-password" autocomplete="current-password" required placeholder="••••••••" />
+        </label>
+        <button type="submit" id="login-btn" class="btn-primary">Sign in</button>
+        <p id="login-error" class="error" hidden></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===== Main app (with bottom nav) ===== -->
+  <section id="app-view" class="view" hidden>
+    <header class="app-header">
+      <div class="header-title">
+        <span class="header-icon" id="screen-icon">🏠</span>
+        <h1 id="screen-title">Home</h1>
+      </div>
+      <div class="header-actions">
+        <button id="whoami-chip" class="chip" title="Set my name">I'm: <b id="whoami-name">—</b></button>
+        <button id="logout-btn" class="icon-btn" title="Sign out">⎋</button>
+      </div>
+    </header>
+
+    <main class="app-main" id="app-main">
+      <!-- Home -->
+      <section id="screen-home" class="screen" hidden></section>
+
+      <!-- Shopping -->
+      <section id="screen-shopping" class="screen" hidden>
+        <div class="subtabs">
+          <button class="subtab active" data-shopsub="list">🛒 Shopping list</button>
+          <button class="subtab" data-shopsub="staples">📦 Pantry</button>
+        </div>
+
+        <div id="shop-list-view">
+          <form id="add-form" class="add-form">
+            <input type="text" id="add-name" placeholder="Add an item… (e.g. Milk x2)" required />
+            <div class="add-row">
+              <select id="add-category" aria-label="Category">
+                <option value="food">🍎 Food</option>
+                <option value="household">🏠 Household</option>
+                <option value="health">💊 Health</option>
+              </select>
+              <input type="text" id="add-qty" placeholder="Qty (optional)" />
+              <button type="submit" class="btn-primary add-btn">＋ Add</button>
+            </div>
+          </form>
+          <button type="button" id="scan-receipt" class="btn-scan">📷 Scan / type from receipt</button>
+          <div id="sync-status" class="sync-status muted"></div>
+          <div id="lists"></div>
+          <p id="empty-state" class="empty" hidden>No items yet — add your first one ✨</p>
+        </div>
+
+        <div id="shop-staples-view" hidden></div>
+      </section>
+
+      <!-- Modules -->
+      <section id="screen-menu" class="screen" hidden></section>
+      <section id="screen-calendar" class="screen" hidden></section>
+      <section id="screen-pets" class="screen" hidden></section>
+      <section id="screen-finance" class="screen" hidden></section>
+      <section id="screen-compare" class="screen" hidden></section>
+    </main>
+
+    <!-- Bottom nav -->
+    <nav class="tabbar" id="tabbar"></nav>
+  </section>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="./js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
