@@ -511,7 +511,13 @@ async function saveDish(dishId, form) {
     payload.created_by = whoami() || null;
     ({ error } = await supabase.from("dishes").insert(payload));
   }
-  if (error) { console.error(error); toast("Couldn't save"); return; }
+  if (error) {
+    console.error(error);
+    toast(/column .*kind/i.test(error.message || "")
+      ? "Run schema_menu.sql first (missing 'kind')"
+      : "Couldn't save: " + (error.message || error.code || "error"));
+    return;
+  }
   closeSheet();
   toast(dishId ? "Updated" : "Recipe added");
   await reload();
