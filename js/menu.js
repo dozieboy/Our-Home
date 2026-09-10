@@ -28,6 +28,7 @@ let subTab = "today";   // 'today' | 'recipes'
 let expandedDish = null;
 let channels = [];
 let recipeSearch = "";          // filter text for the Recipes list
+let recipeTagFilter = "";       // "" | breakfast | lunch | dinner
 let restockPanel = null;        // null | 'day' | 'week' — which restock preview is expanded
 let restockItems = [];          // shortfall items for the open panel
 let onShoppingList = new Set();  // lowercased names already on the shopping list
@@ -211,10 +212,12 @@ function renderRecipes() {
     const nIng = (d.ingredients || []).length;
     const open = expandedDish === d.id;
     const steps = (d.steps || "").split("\n").map((s) => s.trim()).filter(Boolean);
-    return `<div class="recipe ${open ? "open" : ""}" data-rn="${esc(d.name.toLowerCase())}">
+    const tags = d.meal_tags || [];
+    const tagStr = tags.map((k) => (BASE_SLOTS.find((s) => s.key === k)?.emoji || "")).join("");
+    return `<div class="recipe ${open ? "open" : ""}" data-rn="${esc(d.name.toLowerCase())}" data-tags="${esc(tags.join(" "))}">
       <div class="recipe-head" data-expand="${d.id}">
         <div>
-          <div class="recipe-name">${esc(d.name)}</div>
+          <div class="recipe-name">${esc(d.name)}${tagStr ? ` <span class="recipe-tags">${tagStr}</span>` : ""}</div>
           <div class="recipe-sub muted">${isRest ? "🍽️ Restaurant · bought" : `🍳 Cook · ${nIng} ingredient(s)`}</div>
         </div>
         ${isRest ? `<span class="kind-badge rest">🍽️</span>` : `<span class="diff ${diff.cls}">${diff.label}</span>`}
@@ -240,27 +243,37 @@ function renderRecipes() {
     </div>`;
   }).join("");
 
+  const filterChips = `<div class="recipe-filters">
+    <button class="rfilter ${recipeTagFilter === "" ? "active" : ""}" data-rfilter="">All</button>
+    ${BASE_SLOTS.map((s) => `<button class="rfilter ${recipeTagFilter === s.key ? "active" : ""}" data-rfilter="${s.key}">${s.emoji} ${s.label}</button>`).join("")}
+  </div>`;
+
   body.innerHTML = `
     <button class="btn-primary full" id="add-recipe">＋ Add recipe</button>
-    ${dishes.length ? `<input type="search" id="recipe-search" class="search-box" placeholder="🔎 Search saved recipes…" value="${esc(recipeSearch)}">` : ""}
-    ${dishes.length ? `<div class="recipe-list">${list}</div><p class="empty" id="recipe-none" hidden>No recipe matches “<span></span>”</p>`
+    ${dishes.length ? `<input type="search" id="recipe-search" class="search-box" placeholder="🔎 Search saved recipes…" value="${esc(recipeSearch)}">${filterChips}` : ""}
+    ${dishes.length ? `<div class="recipe-list">${list}</div><p class="empty" id="recipe-none" hidden>No recipe matches your filter</p>`
       : `<p class="empty">No recipes yet — add your first 📖</p>`}`;
 
   const applyRecipeFilter = () => {
     const q = recipeSearch.trim().toLowerCase();
+    const tf = recipeTagFilter;
     let shown = 0;
     body.querySelectorAll(".recipe").forEach((r) => {
-      const hit = !q || (r.dataset.rn || "").includes(q);
+      const okText = !q || (r.dataset.rn || "").includes(q);
+      const okTag = !tf || (r.dataset.tags || "").split(" ").includes(tf);
+      const hit = okText && okTag;
       r.hidden = !hit;
       if (hit) shown++;
     });
     const none = $("recipe-none");
-    if (none) { none.hidden = !(q && shown === 0); none.querySelector("span").textContent = recipeSearch.trim(); }
+    if (none) none.hidden = !((q || tf) && shown === 0);
   };
 
   $("add-recipe").addEventListener("click", () => openDishForm(null));
   const rs = $("recipe-search");
   if (rs) rs.addEventListener("input", () => { recipeSearch = rs.value; applyRecipeFilter(); });
+  body.querySelectorAll("[data-rfilter]").forEach((b) =>
+    b.addEventListener("click", () => { recipeTagFilter = b.dataset.rfilter; renderRecipes(); }));
   applyRecipeFilter();
   body.querySelectorAll("[data-expand]").forEach((b) =>
     b.addEventListener("click", () => { const id = b.dataset.expand; expandedDish = expandedDish === id ? null : id; renderRecipes(); }));
@@ -461,6 +474,10 @@ function openDishForm(dishId) {
       <button type="button" class="kind-seg" data-kind="restaurant">🍽️ Restaurant</button>
     </div>
     <label>Name<input type="text" id="df-name" placeholder="e.g. Basil pork stir-fry" value="${d ? esc(d.name) : ""}"></label>
+    <div class="df-ing-label">Good for <span class="muted">(tag to find it faster)</span></div>
+    <div class="tag-picker">
+      ${BASE_SLOTS.map((s) => `<label class="tag-check"><input type="checkbox" class="mt-check" value="${s.key}"> ${s.emoji} ${s.label}</label>`).join("")}
+    </div>
     <div id="cook-fields">
       <div class="search-row">
         <span class="muted">Find a recipe:</span>
@@ -489,6 +506,8 @@ function openDishForm(dishId) {
 
   openSheet(d ? "Edit recipe" : "Add recipe", form);
   form.querySelector("#df-diff").value = d ? d.difficulty : "easy";
+  const savedTags = (d && d.meal_tags) || [];
+  form.querySelectorAll(".mt-check").forEach((c) => { c.checked = savedTags.includes(c.value); });
 
   // Cook vs Restaurant toggle
   let kind = d?.kind === "restaurant" ? "restaurant" : "cook";
@@ -560,8 +579,9 @@ async function saveDish(dishId, form) {
     };
   }).filter((i) => i.name);
   if (kind === "restaurant") { ingredients = []; steps = ""; }   // bought — no cooking data
+  const meal_tags = [...form.querySelectorAll(".mt-check:checked")].map((c) => c.value);
 
-  const payload = { name, kind, difficulty, steps: steps || null, ingredients, source_url: source_url || null };
+  const payload = { name, kind, difficulty, steps: steps || null, ingredients, source_url: source_url || null, meal_tags };
   let error;
   if (dishId) {
     ({ error } = await supabase.from("dishes").update(payload).eq("id", dishId));
@@ -611,6 +631,6 @@ export function teardownMenu() {
   channels = [];
   dishes = []; plan = [];
   restockPanel = null; restockItems = []; onShoppingList = new Set();
-  recipeSearch = "";
+  recipeSearch = ""; recipeTagFilter = "";
   closeSheet();
 }
