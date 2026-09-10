@@ -1,7 +1,6 @@
 import { getShoppingSummary } from "./shopping.js";
 import { getStaplesSummary } from "./staples.js";
 import { getTodayMenuSummary } from "./menu.js";
-import { getTodayEventsSummary } from "./calendar.js";
 import { getPetsSummary } from "./pets.js";
 import { getFinanceSummary } from "./finance.js";
 import { whoami, setTab } from "./app.js";
@@ -19,7 +18,6 @@ export function renderHome() {
   const s = getShoppingSummary();
   const st = getStaplesSummary();
   const m = getTodayMenuSummary();
-  const cal = getTodayEventsSummary();
   const pet = getPetsSummary();
   const fin = getFinanceSummary();
   const name = whoami();
@@ -36,20 +34,6 @@ export function renderHome() {
       <div class="hm-meal-dish ${sl.dishes.length ? "" : "muted"}">${sl.dishes.length ? esc(sl.dishes.join(", ")) : "—"}</div>
     </div>`
   ).join("");
-
-  let eventRows;
-  if (cal.events.length) {
-    eventRows = cal.events.map((e) => `<div class="hm-event"><span class="ev-dot" style="background:${e.color}"></span>
-        <span class="hm-ev-title">${esc(e.title)}</span>
-        <span class="hm-ev-time muted">${e.time ? esc(e.time) : ""}</span></div>`).join("");
-  } else if (cal.upcoming.length) {
-    eventRows = `<div class="hm-upnext muted">Nothing today · upcoming</div>`
-      + cal.upcoming.map((e) => `<div class="hm-event"><span class="ev-dot" style="background:${e.color}"></span>
-        <span class="hm-ev-title">${esc(e.title)}</span>
-        <span class="hm-ev-time muted">${e.when}</span></div>`).join("");
-  } else {
-    eventRows = `<div class="muted">No upcoming events</div>`;
-  }
 
   const petRows = pet.upcoming.length
     ? pet.upcoming.map((t) => `<div class="hm-event"><span class="ev-dot" style="background:${t.color}"></span>
@@ -81,11 +65,6 @@ export function renderHome() {
         ? `<div class="dash-big"><b>${st.total}</b> item(s) tracked</div>
            <div class="${st.out ? "restock-line" : "muted done-line"}">${st.out ? `🔴 ${st.out} out — restock` : "✅ All in stock"}</div>`
         : `<div class="muted">No stock items yet</div>`}
-    </button>
-
-    <button class="dash-card" data-go="calendar">
-      <div class="dash-head"><span>📅 Today${cal.mood ? ` · mood ${cal.mood}` : ""}</span><span class="chev">›</span></div>
-      <div class="hm-events">${eventRows}</div>
     </button>
 
     <button class="dash-card" data-go="pets">
@@ -126,6 +105,5 @@ function esc(s) {
 document.addEventListener("shopping-changed", () => { if (!$("screen-home").hidden) renderHome(); });
 document.addEventListener("staples-changed", () => { if (!$("screen-home").hidden) renderHome(); });
 document.addEventListener("menu-changed", () => { if (!$("screen-home").hidden) renderHome(); });
-document.addEventListener("calendar-changed", () => { if (!$("screen-home").hidden) renderHome(); });
 document.addEventListener("pets-changed", () => { if (!$("screen-home").hidden) renderHome(); });
 document.addEventListener("finance-changed", () => { if (!$("screen-home").hidden) renderHome(); });

@@ -2,10 +2,10 @@ import { supabase, isConfigured } from "./supabase.js";
 import { initShopping, teardownShopping } from "./shopping.js";
 import { initStaples, teardownStaples } from "./staples.js";
 import { initMenu, teardownMenu, renderMenu } from "./menu.js";
-import { initCalendar, teardownCalendar, renderCalendar } from "./calendar.js";
 import { initPets, teardownPets, renderPets } from "./pets.js";
 import { initFinance, teardownFinance, renderFinance } from "./finance.js";
 import { renderCompare } from "./compare.js";
+import { renderAccount, recordMe } from "./account.js";
 import { renderHome } from "./home.js";
 
 const $ = (id) => document.getElementById(id);
@@ -15,10 +15,10 @@ const TABS = [
   { key: "home", label: "Home", emoji: "🏠" },
   { key: "shopping", label: "Shopping", emoji: "🛒" },
   { key: "menu", label: "Meals", emoji: "🍳" },
-  { key: "calendar", label: "Calendar", emoji: "📅" },
   { key: "pets", label: "Pets", emoji: "🐾" },
   { key: "finance", label: "Finance", emoji: "💰" },
   { key: "compare", label: "Compare", emoji: "⚖️" },
+  { key: "account", label: "Account", emoji: "👤" },
 ];
 
 const PLACEHOLDERS = {};
@@ -37,7 +37,7 @@ const WHO_KEY = "baanrao-whoami";
 export function whoami() {
   try { return localStorage.getItem(WHO_KEY) || ""; } catch { return ""; }
 }
-function setWhoami(name) {
+export function setWhoami(name) {
   try { localStorage.setItem(WHO_KEY, name); } catch {}
   $("whoami-name").textContent = name || "—";
 }
@@ -62,10 +62,10 @@ export function setTab(key) {
 
   if (tab.key === "home") renderHome();
   if (tab.key === "menu") renderMenu();
-  if (tab.key === "calendar") renderCalendar();
   if (tab.key === "pets") renderPets();
   if (tab.key === "finance") renderFinance();
   if (tab.key === "compare") renderCompare();
+  if (tab.key === "account") renderAccount();
   window.scrollTo(0, 0);
 }
 
@@ -148,9 +148,10 @@ async function applySession(session) {
   if (session) {
     showView("app");
     setTab("home");
-    if (!started) { started = true; await Promise.all([initShopping(), initStaples(), initMenu(), initCalendar(), initPets(), initFinance()]); }
+    recordMe();   // record my email as a household member (fire & forget)
+    if (!started) { started = true; await Promise.all([initShopping(), initStaples(), initMenu(), initPets(), initFinance()]); }
   } else {
-    if (started) { teardownShopping(); teardownStaples(); teardownMenu(); teardownCalendar(); teardownPets(); teardownFinance(); started = false; }
+    if (started) { teardownShopping(); teardownStaples(); teardownMenu(); teardownPets(); teardownFinance(); started = false; }
     showView("login");
   }
 }
