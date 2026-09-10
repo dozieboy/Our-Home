@@ -37,7 +37,13 @@ export function getStaplesSummary() {
 
 async function addStaple(name, category, qty, unit) {
   const { error } = await supabase.from("staples").insert({ name, category, qty_g: qty || null, unit: unit || "g", created_by: whoami() || null });
-  if (error) { toast("Couldn't add"); return; }
+  if (error) {
+    console.error(error);
+    toast(/column .*(unit|qty_g)/i.test(error.message || "")
+      ? "Run schema_staples.sql first (missing column)"
+      : "Couldn't add: " + (error.message || error.code || "error"));
+    return;
+  }
   await reload();
 }
 async function setQty(id) {
