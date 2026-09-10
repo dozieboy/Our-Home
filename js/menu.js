@@ -43,6 +43,15 @@ function dayLabel(iso) {
 }
 const dishFor = (id) => dishes.find((d) => d.id === id);
 
+// Quantity helpers — unit is 'g' (grams) or 'ea' (each). Reads legacy `grams` too.
+function ingQty(i) {
+  const q = i.qty != null ? i.qty : (i.grams != null ? i.grams : null);
+  return { qty: q != null ? Number(q) : null, unit: i.unit === "ea" ? "ea" : "g" };
+}
+const unitLabel = (u) => (u === "ea" ? "EA" : "g");
+const qtyTag = (qty, unit) => `${qty}${unit === "ea" ? " EA" : "g"}`;       // compact tag, e.g. 2 EA / 500g
+const qtyStr = (qty, unit) => `${Math.round(Number(qty))} ${unitLabel(unit)}`; // shopping qty, e.g. 2 EA / 150 g
+
 // ── Load ────────────────────────────────────────────
 async function reload() {
   const [dRes, pRes] = await Promise.all([
@@ -86,8 +95,9 @@ function prepFor(iso) {
     (d?.ingredients || []).forEach((ing) => {
       if (!ing.name) return;
       const key = ing.name.trim().toLowerCase();
-      const cur = map.get(key) || { name: ing.name, grams: 0 };
-      cur.grams += Number(ing.grams) || 0;
+      const { qty, unit } = ingQty(ing);
+      const cur = map.get(key) || { name: ing.name, qty: 0, unit };
+      if (cur.unit === unit) cur.qty += qty || 0;   // only sum matching units
       map.set(key, cur);
     });
   }
@@ -157,7 +167,7 @@ function renderToday() {
 
     <div class="prep-box">
       <div class="prep-title">🧂 To prep (ingredients — ${dayLabel(selectedDate)})</div>
-      ${prep.length ? `<div class="tag-list">${prep.map((i) => `<span class="tag">${esc(i.name)}${i.grams ? ` · ${i.grams}g` : ""}</span>`).join("")}</div>`
+      ${prep.length ? `<div class="tag-list">${prep.map((i) => `<span class="tag">${esc(i.name)}${i.qty ? ` · ${qtyTag(i.qty, i.unit)}` : ""}</span>`).join("")}</div>`
         : `<div class="muted">— none —</div>`}
     </div>
 
@@ -210,7 +220,7 @@ function renderRecipes() {
               : `<div class="muted">Bought / eat out — no ingredients needed 🍽️</div>`}
           ` : `
             ${nIng ? `<div class="rb-label">Ingredients</div><div class="tag-list">${
-              d.ingredients.map((i) => `<span class="tag ${i.defrost ? "frozen" : ""}">${i.defrost ? "🧊 " : ""}${esc(i.name)}${i.grams ? ` · ${i.grams}g` : ""}</span>`).join("")
+              d.ingredients.map((i) => { const { qty, unit } = ingQty(i); return `<span class="tag ${i.defrost ? "frozen" : ""}">${i.defrost ? "🧊 " : ""}${esc(i.name)}${qty ? ` · ${qtyTag(qty, unit)}` : ""}</span>`; }).join("")
             }</div>` : ""}
             ${steps.length ? `<div class="rb-label">Steps</div><ol class="steps">${steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}
             ${d.source_url ? `<a class="recipe-link" href="${esc(d.source_url)}" target="_blank" rel="noopener">🔗 View source recipe</a>` : ""}
@@ -251,11 +261,11 @@ function shortfallFor(ingredients) {
     if (seen.has(key)) continue;   // dedup across dishes
     seen.add(key);
     const st = getStockByName(ing.name);
-    const need = Number(ing.grams) || 0;
+    const { qty: need, unit } = ingQty(ing);
     if (!st || !st.in_stock) {
-      toBuy.push({ name: ing.name, grams: need || null });           // not in stock at all
-    } else if (need && st.qty_g != null && Number(st.qty_g) < need) {
-      toBuy.push({ name: ing.name, grams: need - Number(st.qty_g) }); // in stock but not enough grams
+      toBuy.push({ name: ing.name, qty: need || null, unit });                 // not in stock at all
+    } else if (need && st.qty_g != null && (st.unit || "g") === unit && Number(st.qty_g) < need) {
+      toBuy.push({ name: ing.name, qty: need - Number(st.qty_g), unit });      // in stock but not enough (same unit)
     }
   }
   return toBuy;
@@ -266,7 +276,7 @@ async function addToShopping(toBuy) {
   for (const b of toBuy) {
     const { data } = await supabase.from("shopping_items").select("id").eq("name", b.name).eq("category", "food").limit(1);
     if (data && data.length) continue;   // already on the list
-    const qty = b.grams ? `${Math.round(b.grams)} g` : null;
+    const qty = b.qty ? qtyStr(b.qty, b.unit) : null;
     const { error } = await supabase.from("shopping_items").insert({ name: b.name, category: "food", qty, created_by: whoami() || null });
     if (!error) added++;
   }
@@ -313,7 +323,7 @@ function renderRestockPanel() {
   const rows = restockItems.map((b, idx) => {
     const on = onShoppingList.has(b.name.trim().toLowerCase());
     return `<li class="item">
-      <div class="body"><div class="name">${esc(b.name)}</div>${b.grams ? `<div class="meta">need ${Math.round(b.grams)} g</div>` : ""}</div>
+      <div class="body"><div class="name">${esc(b.name)}</div>${b.qty ? `<div class="meta">need ${qtyStr(b.qty, b.unit)}</div>` : ""}</div>
       ${on ? `<span class="on-list-tag">✓ On list</span>`
            : `<button class="mini-action cart" data-addone="${idx}">🛒 Add</button>`}
     </li>`;
@@ -451,18 +461,23 @@ function openDishForm(dishId) {
   applyKind();
 
   const ingBox = form.querySelector("#df-ings");
-  const addIngRow = (name = "", defrost = false, grams = "") => {
+  const addIngRow = (name = "", defrost = false, qty = "", unit = "g") => {
     const row = document.createElement("div");
     row.className = "ing-row";
     row.innerHTML = `
       <input type="text" class="ing-name" placeholder="Ingredient" value="${esc(name)}">
-      <input type="number" class="ing-g" placeholder="g" min="0" inputmode="decimal" value="${grams != null ? grams : ""}">
+      <input type="number" class="ing-g" placeholder="qty" min="0" inputmode="decimal" value="${qty != null ? qty : ""}">
+      <select class="ing-unit"><option value="g">g</option><option value="ea">EA</option></select>
       <label class="ing-frost"><input type="checkbox" class="ing-defrost" ${defrost ? "checked" : ""}> 🧊</label>
       <button type="button" class="ing-del">✕</button>`;
+    row.querySelector(".ing-unit").value = unit === "ea" ? "ea" : "g";
     row.querySelector(".ing-del").addEventListener("click", () => row.remove());
     ingBox.appendChild(row);
   };
-  (d?.ingredients?.length ? d.ingredients : [{ name: "", defrost: false }]).forEach((i) => addIngRow(i.name, i.defrost, i.grams));
+  (d?.ingredients?.length ? d.ingredients : [{ name: "", defrost: false }]).forEach((i) => {
+    const { qty, unit } = ingQty(i);
+    addIngRow(i.name, i.defrost, qty != null ? qty : "", unit);
+  });
   form.querySelector("#df-add-ing").addEventListener("click", () => addIngRow());
 
   // Recipe search links — real <a> (opens more reliably than window.open on PWA/iOS)
@@ -494,10 +509,11 @@ async function saveDish(dishId, form) {
   const source_url = form.querySelector("#df-url").value.trim();
   let steps = form.querySelector("#df-steps").value.trim();
   let ingredients = [...form.querySelectorAll(".ing-row")].map((r) => {
-    const g = parseFloat(r.querySelector(".ing-g").value);
+    const q = parseFloat(r.querySelector(".ing-g").value);
     return {
       name: r.querySelector(".ing-name").value.trim(),
-      grams: g > 0 ? g : null,
+      qty: q > 0 ? q : null,
+      unit: r.querySelector(".ing-unit").value === "ea" ? "ea" : "g",
       defrost: r.querySelector(".ing-defrost").checked,
     };
   }).filter((i) => i.name);

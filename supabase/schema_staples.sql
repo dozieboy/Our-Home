@@ -13,8 +13,9 @@ create table if not exists public.staples (
   updated_at  timestamptz not null default now()
 );
 
--- grams on hand (optional) — added later, safe to re-run
+-- quantity on hand (optional) + its unit ('g' grams | 'ea' each) — added later, safe to re-run
 alter table public.staples add column if not exists qty_g numeric;
+alter table public.staples add column if not exists unit text not null default 'g';
 
 drop trigger if exists trg_staples_updated on public.staples;
 create trigger trg_staples_updated

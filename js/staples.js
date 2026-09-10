@@ -35,15 +35,16 @@ export function getStaplesSummary() {
   return { out: staples.filter((s) => !s.in_stock).length, total: staples.length };
 }
 
-async function addStaple(name, category, grams) {
-  const { error } = await supabase.from("staples").insert({ name, category, qty_g: grams || null, created_by: whoami() || null });
+async function addStaple(name, category, qty, unit) {
+  const { error } = await supabase.from("staples").insert({ name, category, qty_g: qty || null, unit: unit || "g", created_by: whoami() || null });
   if (error) { toast("Couldn't add"); return; }
   await reload();
 }
-async function setGrams(id) {
+async function setQty(id) {
   const s = staples.find((x) => x.id === id);
   if (!s) return;
-  const v = prompt("Grams in stock (leave empty to clear):", s.qty_g != null ? s.qty_g : "");
+  const label = (s.unit === "ea" ? "EA" : "g");
+  const v = prompt(`Quantity in stock (${label}) — leave empty to clear:`, s.qty_g != null ? s.qty_g : "");
   if (v === null) return;
   const t = String(v).trim();
   const g = t === "" ? null : (parseFloat(t) >= 0 ? parseFloat(t) : null);
@@ -51,6 +52,7 @@ async function setGrams(id) {
   const { error } = await supabase.from("staples").update({ qty_g: g }).eq("id", id);
   if (error) { toast("Couldn't update"); await reload(); }
 }
+const stockLabel = (s) => s.qty_g != null ? `${s.qty_g}${s.unit === "ea" ? " EA" : " g"}` : "";
 
 // Read stock level for a name (used by Meals to check ingredients)
 export function getStockByName(name) {
@@ -98,16 +100,24 @@ async function addAllOutToShopping() {
 }
 // Called from shopping.js: bought → stock as in-stock (update existing / create new).
 // addG (optional grams, e.g. parsed from "200 g") gets added onto the on-hand amount.
-export async function markInStockByNameCat(name, category, addG) {
+export async function markInStockByNameCat(name, category, addQty, addUnit) {
   const key = (name || "").trim();
   if (!key) return;
+  const u = addUnit === "ea" ? "ea" : "g";
   const existing = staples.find((s) => s.name.trim().toLowerCase() === key.toLowerCase() && s.category === category);
   if (existing) {
     const patch = { in_stock: true };
-    if (addG) patch.qty_g = (Number(existing.qty_g) || 0) + addG;
+    if (addQty) {
+      const eu = existing.unit || "g";
+      if (existing.qty_g == null || eu === u) {            // same unit (or none yet) → add on
+        patch.qty_g = (Number(existing.qty_g) || 0) + addQty;
+        patch.unit = existing.qty_g == null ? u : eu;
+      }
+      // different unit with an existing amount → just mark in stock, don't merge mismatched units
+    }
     await supabase.from("staples").update(patch).eq("id", existing.id);
   } else {
-    await supabase.from("staples").insert({ name: key, category, in_stock: true, qty_g: addG || null, created_by: whoami() || null });
+    await supabase.from("staples").insert({ name: key, category, in_stock: true, qty_g: addQty || null, unit: u, created_by: whoami() || null });
   }
   await reload();
 }
@@ -123,8 +133,8 @@ function render() {
     if (!items.length) return "";
     const rows = items.map((s) => `
       <li class="item staple ${s.in_stock ? "" : "out"}">
-        <div class="body"><div class="name">${esc(s.name)}</div>${s.qty_g != null ? `<div class="meta">${s.qty_g} g in stock</div>` : ""}</div>
-        <button class="g-pill" data-setg="${s.id}">${s.qty_g != null ? s.qty_g + "g" : "⚖️ g"}</button>
+        <div class="body"><div class="name">${esc(s.name)}</div>${s.qty_g != null ? `<div class="meta">${stockLabel(s)} in stock</div>` : ""}</div>
+        <button class="g-pill" data-setg="${s.id}">${s.qty_g != null ? stockLabel(s) : "⚖️"}</button>
         <button class="stock-pill ${s.in_stock ? "in" : "out"}" data-toggle="${s.id}" data-next="${s.in_stock ? 0 : 1}">${s.in_stock ? "✅ Have" : "❌ Out"}</button>
         <button class="del" data-del="${s.id}">🗑</button>
       </li>`).join("");
@@ -142,7 +152,8 @@ function render() {
           <option value="food">🍎 Food</option>
           <option value="health">💊 Health</option>
         </select>
-        <input type="number" id="staple-g" class="staple-g" placeholder="g" min="0" inputmode="decimal" />
+        <input type="number" id="staple-g" class="staple-g" placeholder="qty" min="0" inputmode="decimal" />
+        <select id="staple-unit" class="staple-unit"><option value="g">g</option><option value="ea">EA</option></select>
         <button type="submit" class="btn-primary add-btn">＋ Add</button>
       </div>
     </form>
@@ -169,13 +180,13 @@ function render() {
     const n = $("staple-name").value.trim();
     if (!n) return;
     const g = parseFloat($("staple-g").value);
-    addStaple(n, $("staple-cat").value, g > 0 ? g : null);
+    addStaple(n, $("staple-cat").value, g > 0 ? g : null, $("staple-unit").value);
     $("staple-name").value = "";
     $("staple-g").value = "";
     $("staple-name").focus();
   });
   el.querySelectorAll("[data-setg]").forEach((b) =>
-    b.addEventListener("click", () => setGrams(b.dataset.setg)));
+    b.addEventListener("click", () => setQty(b.dataset.setg)));
   const all = $("restock-all");
   if (all) all.addEventListener("click", addAllOutToShopping);
   el.querySelectorAll("[data-toggle]").forEach((b) =>
