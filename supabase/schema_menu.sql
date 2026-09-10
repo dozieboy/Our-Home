@@ -27,6 +27,9 @@ create table if not exists public.meal_plan (
 );
 create index if not exists idx_meal_plan_date on public.meal_plan (plan_date);
 
+-- ทำเอง (cook) หรือ ซื้อจากร้าน (restaurant) — เพิ่มภายหลัง รันซ้ำได้ปลอดภัย
+alter table public.dishes add column if not exists kind text not null default 'cook';
+
 -- updated_at อัตโนมัติสำหรับ dishes (ใช้ฟังก์ชันเดิมจาก schema.sql)
 drop trigger if exists trg_dishes_updated on public.dishes;
 create trigger trg_dishes_updated

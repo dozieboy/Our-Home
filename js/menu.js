@@ -121,7 +121,7 @@ function renderToday() {
       const diff = DIFF[d.difficulty] || DIFF.easy;
       return `<div class="slot-dish">
         <span class="sd-name" data-gotodish="${d.id}" role="button" tabindex="0">${esc(d.name)} <span class="sd-go">›</span></span>
-        <span class="diff ${diff.cls}">${diff.label}</span>
+        ${d.kind === "restaurant" ? `<span class="kind-badge rest">🍽️</span>` : `<span class="diff ${diff.cls}">${diff.label}</span>`}
         <button class="sd-del" data-delplan="${p.id}">✕</button>
       </div>`;
     }).join("") || `<div class="slot-empty muted">No meal yet</div>`;
@@ -190,6 +190,7 @@ function renderToday() {
 function renderRecipes() {
   const body = $("menu-body");
   const list = dishes.map((d) => {
+    const isRest = d.kind === "restaurant";
     const diff = DIFF[d.difficulty] || DIFF.easy;
     const nIng = (d.ingredients || []).length;
     const open = expandedDish === d.id;
@@ -198,18 +199,23 @@ function renderRecipes() {
       <div class="recipe-head" data-expand="${d.id}">
         <div>
           <div class="recipe-name">${esc(d.name)}</div>
-          <div class="recipe-sub muted">${nIng} ingredient(s)</div>
+          <div class="recipe-sub muted">${isRest ? "🍽️ Restaurant · bought" : `🍳 Cook · ${nIng} ingredient(s)`}</div>
         </div>
-        <span class="diff ${diff.cls}">${diff.label}</span>
+        ${isRest ? `<span class="kind-badge rest">🍽️</span>` : `<span class="diff ${diff.cls}">${diff.label}</span>`}
       </div>
       ${open ? `
         <div class="recipe-body">
-          ${nIng ? `<div class="rb-label">Ingredients</div><div class="tag-list">${
-            d.ingredients.map((i) => `<span class="tag ${i.defrost ? "frozen" : ""}">${i.defrost ? "🧊 " : ""}${esc(i.name)}${i.grams ? ` · ${i.grams}g` : ""}</span>`).join("")
-          }</div>` : ""}
-          ${steps.length ? `<div class="rb-label">Steps</div><ol class="steps">${steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}
-          ${d.source_url ? `<a class="recipe-link" href="${esc(d.source_url)}" target="_blank" rel="noopener">🔗 View source recipe</a>` : ""}
-          ${nIng ? `<button class="link-btn restock-btn" data-restock="${d.id}">🛒 Check stock → add missing to list</button>` : ""}
+          ${isRest ? `
+            ${d.source_url ? `<a class="recipe-link" href="${esc(d.source_url)}" target="_blank" rel="noopener">🔗 Open link (map / delivery / menu)</a>`
+              : `<div class="muted">Bought / eat out — no ingredients needed 🍽️</div>`}
+          ` : `
+            ${nIng ? `<div class="rb-label">Ingredients</div><div class="tag-list">${
+              d.ingredients.map((i) => `<span class="tag ${i.defrost ? "frozen" : ""}">${i.defrost ? "🧊 " : ""}${esc(i.name)}${i.grams ? ` · ${i.grams}g` : ""}</span>`).join("")
+            }</div>` : ""}
+            ${steps.length ? `<div class="rb-label">Steps</div><ol class="steps">${steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}
+            ${d.source_url ? `<a class="recipe-link" href="${esc(d.source_url)}" target="_blank" rel="noopener">🔗 View source recipe</a>` : ""}
+            ${nIng ? `<button class="link-btn restock-btn" data-restock="${d.id}">🛒 Check stock → add missing to list</button>` : ""}
+          `}
           <div class="recipe-actions">
             <button class="link-btn" data-editdish="${d.id}">✏️ Edit</button>
             <button class="link-btn danger" data-deldish="${d.id}">🗑 Delete</button>
@@ -269,6 +275,7 @@ async function addToShopping(toBuy) {
 
 async function addMissingToShopping(dish) {
   if (!dish) return;
+  if (dish.kind === "restaurant") { toast("Bought / eat out — nothing to buy 🍽️"); return; }
   const toBuy = shortfallFor(dish.ingredients || []);
   if (!toBuy.length) { toast("You have all ingredients ✓"); return; }
   const added = await addToShopping(toBuy);
@@ -280,7 +287,8 @@ function ingredientsInRange(from, to) {
   const ings = [];
   for (const p of plan.filter((x) => x.plan_date >= from && x.plan_date <= to)) {
     const d = dishFor(p.dish_id);
-    (d?.ingredients || []).forEach((i) => ings.push(i));
+    if (!d || d.kind === "restaurant") continue;   // eating out → nothing to buy
+    (d.ingredients || []).forEach((i) => ings.push(i));
   }
   return ings;
 }
@@ -359,7 +367,7 @@ function openDishPicker(slot) {
     const diff = DIFF[d.difficulty] || DIFF.easy;
     const b = document.createElement("button");
     b.className = "picker-item";
-    b.innerHTML = `<span>${esc(d.name)}</span><span class="diff ${diff.cls}">${diff.label}</span>`;
+    b.innerHTML = `<span>${esc(d.name)}</span>${d.kind === "restaurant" ? `<span class="kind-badge rest">🍽️</span>` : `<span class="diff ${diff.cls}">${diff.label}</span>`}`;
     b.addEventListener("click", () => assignDish(slot, d.id));
     list.appendChild(b);
   });
@@ -396,33 +404,51 @@ function openDishForm(dishId) {
   const form = document.createElement("div");
   form.className = "dish-form";
   form.innerHTML = `
-    <label>Dish name<input type="text" id="df-name" placeholder="e.g. Basil pork stir-fry" value="${d ? esc(d.name) : ""}"></label>
-    <div class="search-row">
-      <span class="muted">Find a recipe:</span>
-      <a class="chip-btn" data-search="google" target="_blank" rel="noopener">🔎 Google</a>
-      <a class="chip-btn" data-search="youtube" target="_blank" rel="noopener">▶️ YouTube</a>
-      <a class="chip-btn" data-search="tiktok" target="_blank" rel="noopener">🎵 TikTok</a>
-      <a class="chip-btn" data-search="cookpad" target="_blank" rel="noopener">🍳 Cookpad</a>
+    <div class="kind-seg-row">
+      <button type="button" class="kind-seg" data-kind="cook">🍳 Cook</button>
+      <button type="button" class="kind-seg" data-kind="restaurant">🍽️ Restaurant</button>
     </div>
-    <label>Recipe link <span class="muted">(optional — paste a link to view later)</span>
+    <label>Name<input type="text" id="df-name" placeholder="e.g. Basil pork stir-fry" value="${d ? esc(d.name) : ""}"></label>
+    <div id="cook-fields">
+      <div class="search-row">
+        <span class="muted">Find a recipe:</span>
+        <a class="chip-btn" data-search="google" target="_blank" rel="noopener">🔎 Google</a>
+        <a class="chip-btn" data-search="youtube" target="_blank" rel="noopener">▶️ YouTube</a>
+        <a class="chip-btn" data-search="tiktok" target="_blank" rel="noopener">🎵 TikTok</a>
+        <a class="chip-btn" data-search="cookpad" target="_blank" rel="noopener">🍳 Cookpad</a>
+      </div>
+      <label>Difficulty
+        <select id="df-diff">
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </label>
+      <div class="df-ing-label">Ingredients <span class="muted">(tick 🧊 if frozen and needs defrosting)</span></div>
+      <div id="df-ings"></div>
+      <button type="button" class="link-btn" id="df-add-ing">＋ Add ingredient</button>
+      <label>Steps <span class="muted">(one per line)</span>
+        <textarea id="df-steps" rows="5" placeholder="e.g. Heat oil in a pan (new line = next step)">${d ? esc(d.steps || "") : ""}</textarea>
+      </label>
+    </div>
+    <label id="df-url-label"><span class="lbl-txt">Recipe link</span> <span class="muted">(optional)</span>
       <input type="url" id="df-url" placeholder="https://…" value="${d ? esc(d.source_url || "") : ""}"></label>
-    <label>Difficulty
-      <select id="df-diff">
-        <option value="easy">Easy</option>
-        <option value="medium">Medium</option>
-        <option value="hard">Hard</option>
-      </select>
-    </label>
-    <div class="df-ing-label">Ingredients <span class="muted">(tick 🧊 if frozen and needs defrosting)</span></div>
-    <div id="df-ings"></div>
-    <button type="button" class="link-btn" id="df-add-ing">＋ Add ingredient</button>
-    <label>Steps <span class="muted">(one per line)</span>
-      <textarea id="df-steps" rows="5" placeholder="e.g. Heat oil in a pan (new line = next step)">${d ? esc(d.steps || "") : ""}</textarea>
-    </label>
     <button type="button" class="btn-primary full" id="df-save">${d ? "Save changes" : "Save recipe"}</button>`;
 
   openSheet(d ? "Edit recipe" : "Add recipe", form);
   form.querySelector("#df-diff").value = d ? d.difficulty : "easy";
+
+  // Cook vs Restaurant toggle
+  let kind = d?.kind === "restaurant" ? "restaurant" : "cook";
+  const applyKind = () => {
+    form.dataset.kind = kind;
+    form.querySelectorAll(".kind-seg").forEach((b) => b.classList.toggle("active", b.dataset.kind === kind));
+    form.querySelector("#cook-fields").hidden = kind === "restaurant";
+    form.querySelector("#df-url-label .lbl-txt").textContent = kind === "restaurant" ? "Link (map / delivery / menu)" : "Recipe link";
+  };
+  form.querySelectorAll(".kind-seg").forEach((b) =>
+    b.addEventListener("click", () => { kind = b.dataset.kind; applyKind(); }));
+  applyKind();
 
   const ingBox = form.querySelector("#df-ings");
   const addIngRow = (name = "", defrost = false, grams = "") => {
@@ -463,10 +489,11 @@ function openDishForm(dishId) {
 async function saveDish(dishId, form) {
   const name = form.querySelector("#df-name").value.trim();
   if (!name) { toast("Enter a dish name first"); return; }
+  const kind = form.dataset.kind === "restaurant" ? "restaurant" : "cook";
   const difficulty = form.querySelector("#df-diff").value;
-  const steps = form.querySelector("#df-steps").value.trim();
   const source_url = form.querySelector("#df-url").value.trim();
-  const ingredients = [...form.querySelectorAll(".ing-row")].map((r) => {
+  let steps = form.querySelector("#df-steps").value.trim();
+  let ingredients = [...form.querySelectorAll(".ing-row")].map((r) => {
     const g = parseFloat(r.querySelector(".ing-g").value);
     return {
       name: r.querySelector(".ing-name").value.trim(),
@@ -474,8 +501,9 @@ async function saveDish(dishId, form) {
       defrost: r.querySelector(".ing-defrost").checked,
     };
   }).filter((i) => i.name);
+  if (kind === "restaurant") { ingredients = []; steps = ""; }   // bought — no cooking data
 
-  const payload = { name, difficulty, steps: steps || null, ingredients, source_url: source_url || null };
+  const payload = { name, kind, difficulty, steps: steps || null, ingredients, source_url: source_url || null };
   let error;
   if (dishId) {
     ({ error } = await supabase.from("dishes").update(payload).eq("id", dishId));
