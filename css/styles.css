@@ -308,6 +308,9 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 .kind-badge.rest { background: #fef3c7; color: #92400e; border-radius: 999px; padding: 4px 9px; font-size: 13px; white-space: nowrap; }
 .search-box { width: 100%; margin: 10px 0; padding: 11px 14px; font-size: 15px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--text); font-family: inherit; }
 
+.remember-row { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); margin: 2px 0 6px; cursor: pointer; }
+.remember-row input { width: auto; margin: 0; }
+
 /* ===== Account ===== */
 .acct-card { background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px; }
 .acct-label { font-size: 13px; }

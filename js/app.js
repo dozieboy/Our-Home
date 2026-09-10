@@ -96,22 +96,39 @@ function buildPlaceholders() {
   }
 }
 
-// ── Login ────────────────────────────────────────────
+// ── Login (with optional "Remember me" on this device) ──
+const REMEMBER_KEY = "baanrao-remember";
+function saveRemember(email, password) {
+  try { localStorage.setItem(REMEMBER_KEY, btoa(unescape(encodeURIComponent(JSON.stringify({ email, password }))))); } catch {}
+}
+function loadRemember() {
+  try { const v = localStorage.getItem(REMEMBER_KEY); return v ? JSON.parse(decodeURIComponent(escape(atob(v)))) : null; } catch { return null; }
+}
+function clearRemember() { try { localStorage.removeItem(REMEMBER_KEY); } catch {} }
+
 function initLoginForm() {
+  const saved = loadRemember();
+  if (saved) {
+    $("login-email").value = saved.email || "";
+    $("login-password").value = saved.password || "";
+    $("login-remember").checked = true;
+  }
   $("login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = $("login-btn"), err = $("login-error");
+    const email = $("login-email").value.trim();
+    const password = $("login-password").value;
+    const remember = $("login-remember").checked;
     err.hidden = true;
     btn.disabled = true; btn.textContent = "Signing in…";
-    const { error } = await supabase.auth.signInWithPassword({
-      email: $("login-email").value.trim(),
-      password: $("login-password").value,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     btn.disabled = false; btn.textContent = "Sign in";
     if (error) {
       err.textContent = "Sign in failed: " + (error.message || "check your email / password");
       err.hidden = false;
+      return;
     }
+    if (remember) saveRemember(email, password); else clearRemember();
   });
 }
 
