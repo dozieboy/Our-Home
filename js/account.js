@@ -57,9 +57,10 @@ export async function renderAccount() {
   const [members, kids] = await Promise.all([fetchMembers(), hasKids ? fetchKids() : Promise.resolve([])]);
   const meLc = (email || "").toLowerCase();
 
+  const kidEmoji = (g) => g === "boy" ? "👦" : g === "girl" ? "👧" : "👶";
   const kidRows = kids.map((k) => `
     <li class="item">
-      <div class="body"><div class="name">👶 ${esc(k.name)}</div>
+      <div class="body"><div class="name">${kidEmoji(k.gender)} ${esc(k.name)}</div>
         ${k.birthdate ? `<div class="meta">${ddmmyyyy(k.birthdate)}${ageFrom(k.birthdate) ? " · " + ageFrom(k.birthdate) : ""}</div>` : ""}</div>
       <button class="del" data-delkid="${k.id}">🗑</button>
     </li>`).join("");
@@ -92,6 +93,11 @@ export async function renderAccount() {
         <p class="muted acct-sub">Add each child's name &amp; birthday. This also adds a “Kid meal” slot in Meals.</p>
         <form id="kid-form" class="fam-form">
           <input type="text" id="kid-name" placeholder="Kid's name" required>
+          <select id="kid-gender" class="kid-gender">
+            <option value="">👶</option>
+            <option value="boy">👦 Boy</option>
+            <option value="girl">👧 Girl</option>
+          </select>
           <input type="date" id="kid-bday" lang="en-GB" class="kid-bday">
           <button type="submit" class="btn-primary add-btn" id="kid-btn">＋</button>
         </form>
@@ -130,7 +136,8 @@ async function addKid() {
   const name = $("kid-name").value.trim();
   if (!name) return;
   const birthdate = $("kid-bday").value || null;
-  const { error } = await supabase.from("kids").insert({ name, birthdate, created_by: myEmail || null });
+  const gender = $("kid-gender").value || null;
+  const { error } = await supabase.from("kids").insert({ name, birthdate, gender, created_by: myEmail || null });
   if (error) { toast("Couldn't add: " + (error.message || "error")); return; }
   toast("Added " + name);
   renderAccount();

@@ -33,9 +33,11 @@ create table if not exists public.kids (
   id          uuid primary key default gen_random_uuid(),
   name        text not null,
   birthdate   date,
+  gender      text,            -- 'boy' | 'girl' | null
   created_by  text,
   created_at  timestamptz not null default now()
 );
+alter table public.kids add column if not exists gender text;
 alter table public.kids enable row level security;
 drop policy if exists "authenticated full access" on public.kids;
 create policy "authenticated full access" on public.kids
