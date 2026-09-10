@@ -312,6 +312,8 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 .rfilter { border: 1px solid var(--border); background: var(--card); color: var(--muted); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-family: inherit; cursor: pointer; white-space: nowrap; }
 .rfilter.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
 .recipe-tags { font-size: 13px; }
+.picker-showall { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin: -2px 0 10px; cursor: pointer; }
+.picker-showall input { width: auto; margin: 0; }
 .tag-picker { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
 .tag-check { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--text); cursor: pointer; }
 .tag-check input { width: auto; margin: 0; }

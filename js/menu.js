@@ -402,14 +402,22 @@ function goToRecipe(dishId) {
 
 // ── Pick a dish for a slot ──────────────────────────
 function openDishPicker(slot) {
+  const slotTag = ["breakfast", "lunch", "dinner"].includes(slot) ? slot : null;
   const wrap = document.createElement("div");
-  let search = null;
+  let search = null, showAll = null;
   if (dishes.length) {
     search = document.createElement("input");
     search.type = "search";
     search.className = "search-box";
     search.placeholder = "🔎 Search saved recipes…";
     wrap.appendChild(search);
+    if (slotTag) {
+      const row = document.createElement("label");
+      row.className = "picker-showall";
+      row.innerHTML = `<input type="checkbox"> Show all recipes (not just ${slotTag})`;
+      showAll = row.querySelector("input");
+      wrap.appendChild(row);
+    }
   } else {
     wrap.innerHTML = `<p class="muted">No recipes yet — create one first.</p>`;
   }
@@ -421,6 +429,7 @@ function openDishPicker(slot) {
     const b = document.createElement("button");
     b.className = "picker-item";
     b.dataset.rn = d.name.toLowerCase();
+    b.dataset.tags = (d.meal_tags || []).join(" ");
     b.innerHTML = `<span>${esc(d.name)}</span>${d.kind === "restaurant" ? `<span class="kind-badge rest">🍽️</span>` : `<span class="diff ${diff.cls}">${diff.label}</span>`}`;
     b.addEventListener("click", () => assignDish(slot, d.id));
     list.appendChild(b);
@@ -430,13 +439,23 @@ function openDishPicker(slot) {
   const none = document.createElement("p");
   none.className = "empty"; none.hidden = true;
   wrap.appendChild(none);
-  if (search) search.addEventListener("input", () => {
-    const q = search.value.trim().toLowerCase();
+  const apply = () => {
+    const q = (search?.value || "").trim().toLowerCase();
+    const all = showAll?.checked;
     let shown = 0;
-    items.forEach((b) => { const hit = !q || b.dataset.rn.includes(q); b.hidden = !hit; if (hit) shown++; });
-    none.hidden = !(q && shown === 0);
-    none.textContent = shown === 0 ? `No recipe matches “${search.value.trim()}”` : "";
-  });
+    items.forEach((b) => {
+      const tags = b.dataset.tags ? b.dataset.tags.split(" ") : [];
+      const okSlot = !slotTag || all || tags.length === 0 || tags.includes(slotTag);  // untagged shows everywhere
+      const okQ = !q || b.dataset.rn.includes(q);
+      const hit = okSlot && okQ;
+      b.hidden = !hit; if (hit) shown++;
+    });
+    none.hidden = shown > 0;
+    none.textContent = shown === 0 ? "No matching recipe — tick “Show all” or create one" : "";
+  };
+  if (search) search.addEventListener("input", apply);
+  if (showAll) showAll.addEventListener("change", apply);
+  if (dishes.length) apply();
   const newBtn = document.createElement("button");
   newBtn.className = "btn-primary full";
   newBtn.textContent = "＋ Create new recipe";
