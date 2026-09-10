@@ -120,7 +120,7 @@ function renderToday() {
       if (!d) return "";
       const diff = DIFF[d.difficulty] || DIFF.easy;
       return `<div class="slot-dish">
-        <span class="sd-name">${esc(d.name)}</span>
+        <span class="sd-name" data-gotodish="${d.id}" role="button" tabindex="0">${esc(d.name)} <span class="sd-go">›</span></span>
         <span class="diff ${diff.cls}">${diff.label}</span>
         <button class="sd-del" data-delplan="${p.id}">✕</button>
       </div>`;
@@ -175,6 +175,8 @@ function renderToday() {
     b.addEventListener("click", () => openDishPicker(b.dataset.addslot)));
   body.querySelectorAll("[data-delplan]").forEach((b) =>
     b.addEventListener("click", () => removePlan(b.dataset.delplan)));
+  body.querySelectorAll("[data-gotodish]").forEach((el) =>
+    el.addEventListener("click", () => goToRecipe(el.dataset.gotodish)));
   const amd = $("add-missing-day");
   if (amd) amd.addEventListener("click", () => openRestockPanel("day"));
   const amw = $("add-missing-week");
@@ -333,6 +335,16 @@ async function restockAddAll() {
   pending.forEach((b) => onShoppingList.add(b.name.trim().toLowerCase()));
   toast(added ? `Added ${added} 🛒` : "Already on the list");
   renderToday();
+}
+
+// Jump from a planned meal straight to its recipe (Recipes tab, expanded)
+function goToRecipe(dishId) {
+  if (!dishFor(dishId)) return;
+  subTab = "recipes";
+  expandedDish = dishId;
+  render();
+  const rec = document.querySelector(`[data-expand="${dishId}"]`);
+  if (rec) rec.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 // ── Pick a dish for a slot ──────────────────────────
