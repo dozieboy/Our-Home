@@ -78,7 +78,7 @@ export function getTodayMenuSummary() {
   const slotList = slots().map((s) => {
     const names = plan.filter((p) => p.plan_date === t && p.slot === s.key)
       .map((p) => dishFor(p.dish_id)?.name).filter(Boolean);
-    return { label: s.label, emoji: s.emoji, dishes: names };
+    return { key: s.key, label: s.label, emoji: s.emoji, dishes: names };
   });
   const defrost = defrostFor(addDays(t, 1));
   return { slots: slotList, defrostTomorrow: defrost };

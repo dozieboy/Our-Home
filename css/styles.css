@@ -247,7 +247,8 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 .hm-slot { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: 14px; }
 .hm-slot-label { color: var(--muted); flex: 0 0 auto; }
 .hm-slot-dish { text-align: right; }
-.hm-meals3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 8px; margin-top: 8px; }
+.hm-meals3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+.hm-meal-kid { grid-column: 1 / -1; }
 .hm-meal { background: var(--bg); border-radius: 12px; padding: 10px 6px; text-align: center; }
 .hm-meal-label { font-size: 12px; font-weight: 600; color: var(--muted); line-height: 1.35; margin-bottom: 6px; }
 .hm-meal-emoji { font-size: 30px; display: inline-block; line-height: 1; margin-bottom: 4px; }
