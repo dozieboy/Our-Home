@@ -1,6 +1,6 @@
 import { supabase } from "./supabase.js";
 import { toast, whoami, setWhoami } from "./app.js";
-import { getHasKids, setHasKids } from "./settings.js";
+import { getHasKids, setHasKids, getHomeName, setHomeName } from "./settings.js";
 
 const $ = (id) => document.getElementById(id);
 let myEmail = "";
@@ -81,6 +81,10 @@ export async function renderAccount() {
       <div class="acct-label muted">Signed in as</div>
       <div class="acct-email">${esc(email || "—")}</div>
       <div class="acct-row">
+        <span class="muted">🏠 Home name <span class="acct-hint">(top-left title)</span></span>
+        <button class="link-btn" id="acct-home">${esc(getHomeName() || "Set home name")} ✏️</button>
+      </div>
+      <div class="acct-row">
         <span class="muted">Name on this device</span>
         <button class="link-btn" id="acct-name">${esc(whoami() || "Set name")} ✏️</button>
       </div>
@@ -115,6 +119,10 @@ export async function renderAccount() {
       <ul class="item-list">${rows || `<li class="muted acct-empty">No members yet</li>`}</ul>
     </div>`;
 
+  $("acct-home").addEventListener("click", async () => {
+    const n = prompt("Home name (shown top-left):", getHomeName());
+    if (n !== null) { await setHomeName(n); renderAccount(); }
+  });
   $("acct-name").addEventListener("click", () => {
     const n = prompt("Your name (shown on items you add):", whoami());
     if (n !== null) { setWhoami(n.trim()); renderAccount(); }

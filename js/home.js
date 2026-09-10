@@ -3,6 +3,7 @@ import { getStaplesSummary } from "./staples.js";
 import { getTodayMenuSummary } from "./menu.js";
 import { getPetsSummary } from "./pets.js";
 import { getFinanceSummary } from "./finance.js";
+import { getHomeName } from "./settings.js";
 import { whoami, setTab } from "./app.js";
 
 const $ = (id) => document.getElementById(id);
@@ -15,6 +16,8 @@ function todayText() {
 
 export function renderHome() {
   const el = $("screen-home");
+  const title = $("screen-title");
+  if (title) title.textContent = getHomeName() || "Home";   // custom household name in the top bar
   const s = getShoppingSummary();
   const st = getStaplesSummary();
   const m = getTodayMenuSummary();
