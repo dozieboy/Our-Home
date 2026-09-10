@@ -75,14 +75,20 @@ function defrostFor(iso) {
   }
   return [...names];
 }
-// All ingredients for a given date
+// All ingredients for a given date (deduped by name, grams summed)
 function prepFor(iso) {
-  const names = new Set();
+  const map = new Map();
   for (const p of plan.filter((x) => x.plan_date === iso)) {
     const d = dishFor(p.dish_id);
-    (d?.ingredients || []).forEach((ing) => { if (ing.name) names.add(ing.name); });
+    (d?.ingredients || []).forEach((ing) => {
+      if (!ing.name) return;
+      const key = ing.name.trim().toLowerCase();
+      const cur = map.get(key) || { name: ing.name, grams: 0 };
+      cur.grams += Number(ing.grams) || 0;
+      map.set(key, cur);
+    });
   }
-  return [...names];
+  return [...map.values()];
 }
 
 // ── Render ──────────────────────────────────────────
@@ -139,9 +145,14 @@ function renderToday() {
 
     <div class="slots">${slotsHtml}</div>
 
+    ${plan.some((p) => p.plan_date === selectedDate)
+      ? `<button class="btn-primary full" id="add-missing-day">🛒 Add missing for ${dayLabel(selectedDate)}</button>` : ""}
+    ${plan.some((p) => p.plan_date >= todayISO() && p.plan_date <= addDays(todayISO(), 6))
+      ? `<button class="link-btn week-restock" id="add-missing-week">🛒 Prep shopping for the next 7 days</button>` : ""}
+
     <div class="prep-box">
       <div class="prep-title">🧂 To prep (ingredients — ${dayLabel(selectedDate)})</div>
-      ${prep.length ? `<div class="tag-list">${prep.map((n) => `<span class="tag">${esc(n)}</span>`).join("")}</div>`
+      ${prep.length ? `<div class="tag-list">${prep.map((i) => `<span class="tag">${esc(i.name)}${i.grams ? ` · ${i.grams}g` : ""}</span>`).join("")}</div>`
         : `<div class="muted">— none —</div>`}
     </div>
 
@@ -159,6 +170,10 @@ function renderToday() {
     b.addEventListener("click", () => openDishPicker(b.dataset.addslot)));
   body.querySelectorAll("[data-delplan]").forEach((b) =>
     b.addEventListener("click", () => removePlan(b.dataset.delplan)));
+  const amd = $("add-missing-day");
+  if (amd) amd.addEventListener("click", () => addMissingForDate(selectedDate));
+  const amw = $("add-missing-week");
+  if (amw) amw.addEventListener("click", addMissingForWeek);
 }
 
 function renderRecipes() {
@@ -209,21 +224,27 @@ function renderRecipes() {
 }
 
 // ── Stock check → add missing/short ingredients to the shopping list ──
-async function addMissingToShopping(dish) {
-  if (!dish) return;
-  const ings = (dish.ingredients || []).filter((i) => i.name);
+// Given a list of ingredients, return which ones are missing / short in stock.
+function shortfallFor(ingredients) {
   const toBuy = [];
-  for (const ing of ings) {
+  const seen = new Set();
+  for (const ing of ingredients || []) {
+    if (!ing.name) continue;
+    const key = ing.name.trim().toLowerCase();
+    if (seen.has(key)) continue;   // dedup across dishes
+    seen.add(key);
     const st = getStockByName(ing.name);
     const need = Number(ing.grams) || 0;
     if (!st || !st.in_stock) {
-      toBuy.push({ name: ing.name, grams: need || null });          // not in stock at all
+      toBuy.push({ name: ing.name, grams: need || null });           // not in stock at all
     } else if (need && st.qty_g != null && Number(st.qty_g) < need) {
       toBuy.push({ name: ing.name, grams: need - Number(st.qty_g) }); // in stock but not enough grams
     }
   }
-  if (!toBuy.length) { toast("You have all ingredients ✓"); return; }
+  return toBuy;
+}
 
+async function addToShopping(toBuy) {
   let added = 0;
   for (const b of toBuy) {
     const { data } = await supabase.from("shopping_items").select("id").eq("name", b.name).eq("category", "food").limit(1);
@@ -232,7 +253,46 @@ async function addMissingToShopping(dish) {
     const { error } = await supabase.from("shopping_items").insert({ name: b.name, category: "food", qty, created_by: whoami() || null });
     if (!error) added++;
   }
+  return added;
+}
+
+async function addMissingToShopping(dish) {
+  if (!dish) return;
+  const toBuy = shortfallFor(dish.ingredients || []);
+  if (!toBuy.length) { toast("You have all ingredients ✓"); return; }
+  const added = await addToShopping(toBuy);
   toast(added ? `Added ${added} to shopping list 🛒` : "Already on the list");
+}
+
+// Gather ingredients across every dish planned within [from, to] (inclusive ISO dates).
+function ingredientsInRange(from, to) {
+  const ings = [];
+  for (const p of plan.filter((x) => x.plan_date >= from && x.plan_date <= to)) {
+    const d = dishFor(p.dish_id);
+    (d?.ingredients || []).forEach((i) => ings.push(i));
+  }
+  return ings;
+}
+
+// Check every dish planned for a single date and add whatever is missing/short.
+async function addMissingForDate(iso) {
+  const ings = ingredientsInRange(iso, iso);
+  if (!ings.length) { toast("No meals planned for this day"); return; }
+  const toBuy = shortfallFor(ings);
+  if (!toBuy.length) { toast("You have everything for these meals ✓"); return; }
+  const added = await addToShopping(toBuy);
+  toast(added ? `Added ${added} to shopping list 🛒` : "Already on the list");
+}
+
+// Prep ahead: check the next 7 days of planned meals and add what's missing/short.
+async function addMissingForWeek() {
+  const start = todayISO();
+  const ings = ingredientsInRange(start, addDays(start, 6));
+  if (!ings.length) { toast("No meals planned this week"); return; }
+  const toBuy = shortfallFor(ings);
+  if (!toBuy.length) { toast("You have everything for this week ✓"); return; }
+  const added = await addToShopping(toBuy);
+  toast(added ? `Added ${added} for the week 🛒` : "Already on the list");
 }
 
 // ── Pick a dish for a slot ──────────────────────────

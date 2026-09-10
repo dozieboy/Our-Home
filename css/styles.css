@@ -288,6 +288,8 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 .g-pill { border: 1px solid var(--border); background: var(--bg); border-radius: 999px; padding: 6px 9px; font-size: 12.5px; font-family: inherit; color: var(--muted); cursor: pointer; white-space: nowrap; }
 .ing-g { flex: 0 0 62px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); font-size: 15px; min-width: 0; text-align: center; }
 .restock-btn { display: block; margin: 2px 0 10px; }
+.week-restock { display: block; margin: 8px auto 14px; }
+#add-missing-day { margin-bottom: 8px; }
 
 .mini-action { border: 1px solid var(--border); background: var(--bg); border-radius: 8px; padding: 6px 10px; font-size: 12.5px; font-family: inherit; color: var(--text); cursor: pointer; white-space: nowrap; }
 .mini-action.cart { background: var(--primary); color: #fff; border-color: var(--primary); }
