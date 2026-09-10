@@ -35,10 +35,28 @@ export function getStaplesSummary() {
   return { out: staples.filter((s) => !s.in_stock).length, total: staples.length };
 }
 
-async function addStaple(name, category) {
-  const { error } = await supabase.from("staples").insert({ name, category, created_by: whoami() || null });
+async function addStaple(name, category, grams) {
+  const { error } = await supabase.from("staples").insert({ name, category, qty_g: grams || null, created_by: whoami() || null });
   if (error) { toast("Couldn't add"); return; }
   await reload();
+}
+async function setGrams(id) {
+  const s = staples.find((x) => x.id === id);
+  if (!s) return;
+  const v = prompt("Grams in stock (leave empty to clear):", s.qty_g != null ? s.qty_g : "");
+  if (v === null) return;
+  const t = String(v).trim();
+  const g = t === "" ? null : (parseFloat(t) >= 0 ? parseFloat(t) : null);
+  s.qty_g = g; render();   // optimistic
+  const { error } = await supabase.from("staples").update({ qty_g: g }).eq("id", id);
+  if (error) { toast("Couldn't update"); await reload(); }
+}
+
+// Read stock level for a name (used by Meals to check ingredients)
+export function getStockByName(name) {
+  const key = (name || "").trim().toLowerCase();
+  if (!key) return null;
+  return staples.find((s) => s.name.trim().toLowerCase() === key) || null;
 }
 async function toggleStock(id, next) {
   const s = staples.find((x) => x.id === id);
@@ -78,15 +96,18 @@ async function addAllOutToShopping() {
   await refreshOnList(); render();
   toast(n ? `Added ${n} to list` : "Already on the list");
 }
-// Called from shopping.js: bought → pantry as in-stock (update existing / create new)
-export async function markInStockByNameCat(name, category) {
+// Called from shopping.js: bought → stock as in-stock (update existing / create new).
+// addG (optional grams, e.g. parsed from "200 g") gets added onto the on-hand amount.
+export async function markInStockByNameCat(name, category, addG) {
   const key = (name || "").trim();
   if (!key) return;
   const existing = staples.find((s) => s.name.trim().toLowerCase() === key.toLowerCase() && s.category === category);
   if (existing) {
-    if (!existing.in_stock) await supabase.from("staples").update({ in_stock: true }).eq("id", existing.id);
+    const patch = { in_stock: true };
+    if (addG) patch.qty_g = (Number(existing.qty_g) || 0) + addG;
+    await supabase.from("staples").update(patch).eq("id", existing.id);
   } else {
-    await supabase.from("staples").insert({ name: key, category, in_stock: true, created_by: whoami() || null });
+    await supabase.from("staples").insert({ name: key, category, in_stock: true, qty_g: addG || null, created_by: whoami() || null });
   }
   await reload();
 }
@@ -102,7 +123,8 @@ function render() {
     if (!items.length) return "";
     const rows = items.map((s) => `
       <li class="item staple ${s.in_stock ? "" : "out"}">
-        <div class="body"><div class="name">${esc(s.name)}</div></div>
+        <div class="body"><div class="name">${esc(s.name)}</div>${s.qty_g != null ? `<div class="meta">${s.qty_g} g in stock</div>` : ""}</div>
+        <button class="g-pill" data-setg="${s.id}">${s.qty_g != null ? s.qty_g + "g" : "⚖️ g"}</button>
         <button class="stock-pill ${s.in_stock ? "in" : "out"}" data-toggle="${s.id}" data-next="${s.in_stock ? 0 : 1}">${s.in_stock ? "✅ Have" : "❌ Out"}</button>
         <button class="del" data-del="${s.id}">🗑</button>
       </li>`).join("");
@@ -120,6 +142,7 @@ function render() {
           <option value="food">🍎 Food</option>
           <option value="health">💊 Health</option>
         </select>
+        <input type="number" id="staple-g" class="staple-g" placeholder="g" min="0" inputmode="decimal" />
         <button type="submit" class="btn-primary add-btn">＋ Add</button>
       </div>
     </form>
@@ -137,7 +160,7 @@ function render() {
       </div>`
       : `<div class="restock-box ok">✅ Nothing to add to the list</div>`}
 
-    ${staples.length ? `<div class="staples-label">📦 Pantry</div>${catHtml}`
+    ${staples.length ? `<div class="staples-label">📦 Stock</div>${catHtml}`
       : `<p class="empty">No staples yet — add things you keep at home, then tap “Out” when they run low 📦</p>`}
   `;
 
@@ -145,10 +168,14 @@ function render() {
     e.preventDefault();
     const n = $("staple-name").value.trim();
     if (!n) return;
-    addStaple(n, $("staple-cat").value);
+    const g = parseFloat($("staple-g").value);
+    addStaple(n, $("staple-cat").value, g > 0 ? g : null);
     $("staple-name").value = "";
+    $("staple-g").value = "";
     $("staple-name").focus();
   });
+  el.querySelectorAll("[data-setg]").forEach((b) =>
+    b.addEventListener("click", () => setGrams(b.dataset.setg)));
   const all = $("restock-all");
   if (all) all.addEventListener("click", addAllOutToShopping);
   el.querySelectorAll("[data-toggle]").forEach((b) =>

@@ -1,6 +1,7 @@
 import { supabase } from "./supabase.js";
 import { toast, whoami } from "./app.js";
 import { openSheet, closeSheet, esc } from "./ui.js";
+import { getStockByName } from "./staples.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -178,10 +179,11 @@ function renderRecipes() {
       ${open ? `
         <div class="recipe-body">
           ${nIng ? `<div class="rb-label">Ingredients</div><div class="tag-list">${
-            d.ingredients.map((i) => `<span class="tag ${i.defrost ? "frozen" : ""}">${i.defrost ? "🧊 " : ""}${esc(i.name)}</span>`).join("")
+            d.ingredients.map((i) => `<span class="tag ${i.defrost ? "frozen" : ""}">${i.defrost ? "🧊 " : ""}${esc(i.name)}${i.grams ? ` · ${i.grams}g` : ""}</span>`).join("")
           }</div>` : ""}
           ${steps.length ? `<div class="rb-label">Steps</div><ol class="steps">${steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}
           ${d.source_url ? `<a class="recipe-link" href="${esc(d.source_url)}" target="_blank" rel="noopener">🔗 View source recipe</a>` : ""}
+          ${nIng ? `<button class="link-btn restock-btn" data-restock="${d.id}">🛒 Check stock → add missing to list</button>` : ""}
           <div class="recipe-actions">
             <button class="link-btn" data-editdish="${d.id}">✏️ Edit</button>
             <button class="link-btn danger" data-deldish="${d.id}">🗑 Delete</button>
@@ -202,6 +204,35 @@ function renderRecipes() {
     b.addEventListener("click", (e) => { e.stopPropagation(); openDishForm(b.dataset.editdish); }));
   body.querySelectorAll("[data-deldish]").forEach((b) =>
     b.addEventListener("click", (e) => { e.stopPropagation(); deleteDish(b.dataset.deldish); }));
+  body.querySelectorAll("[data-restock]").forEach((b) =>
+    b.addEventListener("click", (e) => { e.stopPropagation(); addMissingToShopping(dishFor(b.dataset.restock)); }));
+}
+
+// ── Stock check → add missing/short ingredients to the shopping list ──
+async function addMissingToShopping(dish) {
+  if (!dish) return;
+  const ings = (dish.ingredients || []).filter((i) => i.name);
+  const toBuy = [];
+  for (const ing of ings) {
+    const st = getStockByName(ing.name);
+    const need = Number(ing.grams) || 0;
+    if (!st || !st.in_stock) {
+      toBuy.push({ name: ing.name, grams: need || null });          // not in stock at all
+    } else if (need && st.qty_g != null && Number(st.qty_g) < need) {
+      toBuy.push({ name: ing.name, grams: need - Number(st.qty_g) }); // in stock but not enough grams
+    }
+  }
+  if (!toBuy.length) { toast("You have all ingredients ✓"); return; }
+
+  let added = 0;
+  for (const b of toBuy) {
+    const { data } = await supabase.from("shopping_items").select("id").eq("name", b.name).eq("category", "food").limit(1);
+    if (data && data.length) continue;   // already on the list
+    const qty = b.grams ? `${Math.round(b.grams)} g` : null;
+    const { error } = await supabase.from("shopping_items").insert({ name: b.name, category: "food", qty, created_by: whoami() || null });
+    if (!error) added++;
+  }
+  toast(added ? `Added ${added} to shopping list 🛒` : "Already on the list");
 }
 
 // ── Pick a dish for a slot ──────────────────────────
@@ -238,6 +269,7 @@ async function assignDish(slot, dishId) {
   });
   if (error) { toast("Couldn't add meal"); return; }
   await reload();
+  await addMissingToShopping(dishFor(dishId));   // ingredients not in stock / short → shopping list
 }
 
 async function removePlan(id) {
@@ -281,17 +313,18 @@ function openDishForm(dishId) {
   form.querySelector("#df-diff").value = d ? d.difficulty : "easy";
 
   const ingBox = form.querySelector("#df-ings");
-  const addIngRow = (name = "", defrost = false) => {
+  const addIngRow = (name = "", defrost = false, grams = "") => {
     const row = document.createElement("div");
     row.className = "ing-row";
     row.innerHTML = `
       <input type="text" class="ing-name" placeholder="Ingredient" value="${esc(name)}">
+      <input type="number" class="ing-g" placeholder="g" min="0" inputmode="decimal" value="${grams != null ? grams : ""}">
       <label class="ing-frost"><input type="checkbox" class="ing-defrost" ${defrost ? "checked" : ""}> 🧊</label>
       <button type="button" class="ing-del">✕</button>`;
     row.querySelector(".ing-del").addEventListener("click", () => row.remove());
     ingBox.appendChild(row);
   };
-  (d?.ingredients?.length ? d.ingredients : [{ name: "", defrost: false }]).forEach((i) => addIngRow(i.name, i.defrost));
+  (d?.ingredients?.length ? d.ingredients : [{ name: "", defrost: false }]).forEach((i) => addIngRow(i.name, i.defrost, i.grams));
   form.querySelector("#df-add-ing").addEventListener("click", () => addIngRow());
 
   // Recipe search links — real <a> (opens more reliably than window.open on PWA/iOS)
@@ -321,10 +354,14 @@ async function saveDish(dishId, form) {
   const difficulty = form.querySelector("#df-diff").value;
   const steps = form.querySelector("#df-steps").value.trim();
   const source_url = form.querySelector("#df-url").value.trim();
-  const ingredients = [...form.querySelectorAll(".ing-row")].map((r) => ({
-    name: r.querySelector(".ing-name").value.trim(),
-    defrost: r.querySelector(".ing-defrost").checked,
-  })).filter((i) => i.name);
+  const ingredients = [...form.querySelectorAll(".ing-row")].map((r) => {
+    const g = parseFloat(r.querySelector(".ing-g").value);
+    return {
+      name: r.querySelector(".ing-name").value.trim(),
+      grams: g > 0 ? g : null,
+      defrost: r.querySelector(".ing-defrost").checked,
+    };
+  }).filter((i) => i.name);
 
   const payload = { name, difficulty, steps: steps || null, ingredients, source_url: source_url || null };
   let error;

@@ -65,7 +65,7 @@ export function renderHome() {
       <div class="dash-head"><span>🛒 Shopping</span><span class="chev">›</span></div>
       <div class="dash-big"><b>${s.remaining}</b> item(s) to buy</div>
       <div class="mini-chips">${catChips}</div>
-      ${st.out ? `<div class="restock-line">📦 ${st.out} pantry staple(s) out — restock</div>` : ""}
+      ${st.out ? `<div class="restock-line">📦 ${st.out} stock item(s) out — restock</div>` : ""}
     </button>
 
     <button class="dash-card" data-go="menu">

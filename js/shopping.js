@@ -54,15 +54,17 @@ async function addItem(name, category, qty) {
   render();
 }
 
-// ── Tick = bought → into pantry as in-stock, leaves the list ──
+const parseGrams = (q) => { const m = /(\d+(?:\.\d+)?)\s*g\b/i.exec(q || ""); return m ? parseFloat(m[1]) : 0; };
+
+// ── Tick = bought → into stock as in-stock, leaves the list ──
 async function buyItem(id) {
   const it = items.find((i) => i.id === id);
   if (!it || String(id).startsWith("tmp-")) return;
-  items = items.filter((x) => x.id !== id); render();   // optimistic remove
-  await markInStockByNameCat(it.name, it.category);      // pantry → in stock
+  items = items.filter((x) => x.id !== id); render();          // optimistic remove
+  await markInStockByNameCat(it.name, it.category, parseGrams(it.qty));   // stock → in stock (+grams)
   const { error } = await supabase.from("shopping_items").delete().eq("id", id);
   if (error) { toast("Something went wrong"); await loadItems(); return; }
-  toast("Bought → pantry: " + it.name);
+  toast("Bought → stock: " + it.name);
 }
 
 // ── Scan / type from receipt (bulk add) ─────────────
