@@ -105,5 +105,6 @@ function esc(s) {
 document.addEventListener("shopping-changed", () => { if (!$("screen-home").hidden) renderHome(); });
 document.addEventListener("staples-changed", () => { if (!$("screen-home").hidden) renderHome(); });
 document.addEventListener("menu-changed", () => { if (!$("screen-home").hidden) renderHome(); });
+document.addEventListener("settings-changed", () => { if (!$("screen-home").hidden) renderHome(); });
 document.addEventListener("pets-changed", () => { if (!$("screen-home").hidden) renderHome(); });
 document.addEventListener("finance-changed", () => { if (!$("screen-home").hidden) renderHome(); });

@@ -30,6 +30,10 @@ create index if not exists idx_meal_plan_date on public.meal_plan (plan_date);
 -- ทำเอง (cook) หรือ ซื้อจากร้าน (restaurant) — เพิ่มภายหลัง รันซ้ำได้ปลอดภัย
 alter table public.dishes add column if not exists kind text not null default 'cook';
 
+-- allow a 'kid' meal slot (for households with kids) — safe to re-run
+alter table public.meal_plan drop constraint if exists meal_plan_slot_check;
+alter table public.meal_plan add constraint meal_plan_slot_check check (slot in ('breakfast','lunch','dinner','kid'));
+
 -- updated_at อัตโนมัติสำหรับ dishes (ใช้ฟังก์ชันเดิมจาก schema.sql)
 drop trigger if exists trg_dishes_updated on public.dishes;
 create trigger trg_dishes_updated

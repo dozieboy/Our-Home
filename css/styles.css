@@ -247,7 +247,7 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 .hm-slot { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: 14px; }
 .hm-slot-label { color: var(--muted); flex: 0 0 auto; }
 .hm-slot-dish { text-align: right; }
-.hm-meals3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+.hm-meals3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 8px; margin-top: 8px; }
 .hm-meal { background: var(--bg); border-radius: 12px; padding: 10px 6px; text-align: center; }
 .hm-meal-label { font-size: 12px; font-weight: 600; color: var(--muted); line-height: 1.35; margin-bottom: 6px; }
 .hm-meal-emoji { font-size: 30px; display: inline-block; line-height: 1; margin-bottom: 4px; }
@@ -326,6 +326,12 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 .me-tag { font-size: 11px; background: var(--primary); color: #fff; border-radius: 999px; padding: 2px 7px; font-weight: 600; vertical-align: middle; }
 .mem-status { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
 .mem-status.on { color: #166534; font-weight: 600; }
+.kids-toggle { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: var(--text); cursor: pointer; }
+.kids-toggle input { width: auto; margin: 0; }
+#kids-box { margin-top: 12px; }
+#kid-form { flex-wrap: wrap; }
+#kid-form input[type="text"] { flex: 1 1 120px; }
+.kid-bday { flex: 0 0 auto; padding: 11px 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); font-family: inherit; font-size: 14px; }
 
 .mini-action { border: 1px solid var(--border); background: var(--bg); border-radius: 8px; padding: 6px 10px; font-size: 12.5px; font-family: inherit; color: var(--text); cursor: pointer; white-space: nowrap; }
 .mini-action.cart { background: var(--primary); color: #fff; border-color: var(--primary); }

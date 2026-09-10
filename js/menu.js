@@ -2,14 +2,19 @@ import { supabase } from "./supabase.js";
 import { toast, whoami } from "./app.js";
 import { openSheet, closeSheet, esc } from "./ui.js";
 import { getStockByName } from "./staples.js";
+import { getHasKids } from "./settings.js";
 
 const $ = (id) => document.getElementById(id);
 
-const SLOTS = [
+const BASE_SLOTS = [
   { key: "breakfast", label: "Breakfast", emoji: "🌅" },
   { key: "lunch", label: "Lunch", emoji: "☀️" },
   { key: "dinner", label: "Dinner", emoji: "🌙" },
 ];
+const KID_SLOT = { key: "kid", label: "Kid meal", emoji: "👶" };
+const ALL_SLOTS = [...BASE_SLOTS, KID_SLOT];
+// Visible slots depend on whether the household has kids
+function slots() { return getHasKids() ? [...BASE_SLOTS, KID_SLOT] : [...BASE_SLOTS]; }
 const DIFF = {
   easy:   { label: "Easy", cls: "d-easy" },
   medium: { label: "Medium", cls: "d-medium" },
@@ -70,13 +75,13 @@ async function reload() {
 // ── Summary for Home ────────────────────────────────
 export function getTodayMenuSummary() {
   const t = todayISO();
-  const slots = SLOTS.map((s) => {
+  const slotList = slots().map((s) => {
     const names = plan.filter((p) => p.plan_date === t && p.slot === s.key)
       .map((p) => dishFor(p.dish_id)?.name).filter(Boolean);
     return { label: s.label, emoji: s.emoji, dishes: names };
   });
   const defrost = defrostFor(addDays(t, 1));
-  return { slots, defrostTomorrow: defrost };
+  return { slots: slotList, defrostTomorrow: defrost };
 }
 
 // Frozen ingredients to defrost for a given date
@@ -124,7 +129,7 @@ function renderToday() {
   const body = $("menu-body");
   const nextDay = addDays(selectedDate, 1);
 
-  const slotsHtml = SLOTS.map((s) => {
+  const slotsHtml = slots().map((s) => {
     const entries = plan.filter((p) => p.plan_date === selectedDate && p.slot === s.key);
     const rows = entries.map((p) => {
       const d = dishFor(p.dish_id);
@@ -425,7 +430,7 @@ function openDishPicker(slot) {
   newBtn.addEventListener("click", () => openDishForm(null));
   wrap.appendChild(newBtn);
 
-  const slotLabel = SLOTS.find((s) => s.key === slot)?.label || "";
+  const slotLabel = ALL_SLOTS.find((s) => s.key === slot)?.label || "";
   openSheet(`Add ${slotLabel} · ${dayLabel(selectedDate)}`, wrap);
 }
 
@@ -586,6 +591,12 @@ async function deleteDish(dishId) {
 
 // ── init / teardown ─────────────────────────────────
 export function renderMenu() { render(); }
+
+// Kid meal slot appears/disappears when the household's "has kids" setting changes
+document.addEventListener("settings-changed", () => {
+  const el = $("screen-menu");
+  if (el && !el.hidden && subTab === "today") render();
+});
 
 export async function initMenu() {
   await reload();

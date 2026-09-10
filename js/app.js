@@ -6,6 +6,7 @@ import { initPets, teardownPets, renderPets } from "./pets.js";
 import { initFinance, teardownFinance, renderFinance } from "./finance.js";
 import { renderCompare } from "./compare.js";
 import { renderAccount, recordMe } from "./account.js";
+import { initSettings, teardownSettings } from "./settings.js";
 import { renderHome } from "./home.js";
 
 const $ = (id) => document.getElementById(id);
@@ -166,9 +167,9 @@ async function applySession(session) {
     showView("app");
     setTab("home");
     recordMe();   // record my email as a household member (fire & forget)
-    if (!started) { started = true; await Promise.all([initShopping(), initStaples(), initMenu(), initPets(), initFinance()]); }
+    if (!started) { started = true; await Promise.all([initSettings(), initShopping(), initStaples(), initMenu(), initPets(), initFinance()]); }
   } else {
-    if (started) { teardownShopping(); teardownStaples(); teardownMenu(); teardownPets(); teardownFinance(); started = false; }
+    if (started) { teardownSettings(); teardownShopping(); teardownStaples(); teardownMenu(); teardownPets(); teardownFinance(); started = false; }
     showView("login");
   }
 }
