@@ -28,12 +28,14 @@ export function renderHome() {
     { emoji: "💊", label: "Health", n: s.byCat.health },
   ].map((c) => `<span class="mini-chip">${c.emoji} ${c.label} <b>${c.n}</b></span>`).join("");
 
-  const meals3 = m.slots.map((sl) =>
-    `<div class="hm-meal ${sl.key === "kid" ? "hm-meal-kid" : ""}">
-      <div class="hm-meal-label"><span class="hm-meal-emoji">${sl.emoji}</span><br>${sl.label}</div>
+  const meals3 = m.slots.map((sl) => {
+    const kid = (sl.key || "").startsWith("kid");
+    const label = kid ? (sl.label || "").replace("Kid ", "") : sl.label;
+    return `<div class="hm-meal ${kid ? "hm-meal-kid" : ""}">
+      <div class="hm-meal-label"><span class="hm-meal-emoji">${sl.emoji}</span><br>${esc(label)}</div>
       <div class="hm-meal-dish ${sl.dishes.length ? "" : "muted"}">${sl.dishes.length ? esc(sl.dishes.join(", ")) : "—"}</div>
-    </div>`
-  ).join("");
+    </div>`;
+  }).join("");
 
   const petRows = pet.upcoming.length
     ? pet.upcoming.map((t) => `<div class="hm-event"><span class="ev-dot" style="background:${t.color}"></span>

@@ -33,9 +33,10 @@ alter table public.dishes add column if not exists kind text not null default 'c
 -- meal tags (breakfast/lunch/dinner) for filtering recipes — safe to re-run
 alter table public.dishes add column if not exists meal_tags jsonb not null default '[]'::jsonb;
 
--- allow a 'kid' meal slot (for households with kids) — safe to re-run
+-- allow kid meal slots (breakfast/lunch/dinner for kids) — safe to re-run
 alter table public.meal_plan drop constraint if exists meal_plan_slot_check;
-alter table public.meal_plan add constraint meal_plan_slot_check check (slot in ('breakfast','lunch','dinner','kid'));
+alter table public.meal_plan add constraint meal_plan_slot_check
+  check (slot in ('breakfast','lunch','dinner','kid','kid_breakfast','kid_lunch','kid_dinner'));
 
 -- updated_at อัตโนมัติสำหรับ dishes (ใช้ฟังก์ชันเดิมจาก schema.sql)
 drop trigger if exists trg_dishes_updated on public.dishes;

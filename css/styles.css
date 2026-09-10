@@ -216,6 +216,8 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 
 .slots { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
 .slot-card { background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 14px; }
+.slot-card-kid { background: rgba(245, 158, 11, .10); }
+.slots-divider { font-weight: 700; font-size: 14px; color: var(--muted); margin: 6px 2px -2px; }
 .slot-head { font-weight: 700; font-size: 15px; margin-bottom: 8px; }
 .slot-dish { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border); }
 .sd-name { flex: 1; font-size: 15px; cursor: pointer; color: var(--primary); font-weight: 600; }
@@ -248,7 +250,7 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 .hm-slot-label { color: var(--muted); flex: 0 0 auto; }
 .hm-slot-dish { text-align: right; }
 .hm-meals3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
-.hm-meal-kid { grid-column: 1 / -1; }
+.hm-meal-kid { background: rgba(245, 158, 11, .14); }
 .hm-meal { background: var(--bg); border-radius: 12px; padding: 10px 6px; text-align: center; }
 .hm-meal-label { font-size: 12px; font-weight: 600; color: var(--muted); line-height: 1.35; margin-bottom: 6px; }
 .hm-meal-emoji { font-size: 30px; display: inline-block; line-height: 1; margin-bottom: 4px; }

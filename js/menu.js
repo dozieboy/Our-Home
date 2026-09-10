@@ -11,10 +11,15 @@ const BASE_SLOTS = [
   { key: "lunch", label: "Lunch", emoji: "☀️" },
   { key: "dinner", label: "Dinner", emoji: "🌙" },
 ];
-const KID_SLOT = { key: "kid", label: "Kid meal", emoji: "👶" };
-const ALL_SLOTS = [...BASE_SLOTS, KID_SLOT];
+const KID_SLOTS = [
+  { key: "kid_breakfast", label: "Kid breakfast", emoji: "👶" },
+  { key: "kid_lunch", label: "Kid lunch", emoji: "👶" },
+  { key: "kid_dinner", label: "Kid dinner", emoji: "👶" },
+];
+// includes legacy 'kid' for label lookup of any old entries
+const ALL_SLOTS = [...BASE_SLOTS, ...KID_SLOTS, { key: "kid", label: "Kid meal", emoji: "👶" }];
 // Visible slots depend on whether the household has kids
-function slots() { return getHasKids() ? [...BASE_SLOTS, KID_SLOT] : [...BASE_SLOTS]; }
+function slots() { return getHasKids() ? [...BASE_SLOTS, ...KID_SLOTS] : [...BASE_SLOTS]; }
 const DIFF = {
   easy:   { label: "Easy", cls: "d-easy" },
   medium: { label: "Medium", cls: "d-medium" },
@@ -130,7 +135,10 @@ function renderToday() {
   const body = $("menu-body");
   const nextDay = addDays(selectedDate, 1);
 
-  const slotsHtml = slots().map((s) => {
+  let slotsHtml = "", kidShown = false;
+  slots().forEach((s) => {
+    const isKid = s.key.startsWith("kid_");
+    if (isKid && !kidShown) { slotsHtml += `<div class="slots-divider">👶 For the kids</div>`; kidShown = true; }
     const entries = plan.filter((p) => p.plan_date === selectedDate && p.slot === s.key);
     const rows = entries.map((p) => {
       const d = dishFor(p.dish_id);
@@ -142,12 +150,12 @@ function renderToday() {
         <button class="sd-del" data-delplan="${p.id}">✕</button>
       </div>`;
     }).join("") || `<div class="slot-empty muted">No meal yet</div>`;
-    return `<div class="slot-card">
+    slotsHtml += `<div class="slot-card ${isKid ? "slot-card-kid" : ""}">
       <div class="slot-head">${s.emoji} ${s.label}</div>
       ${rows}
       <button class="slot-add" data-addslot="${s.key}">＋ Add meal</button>
     </div>`;
-  }).join("");
+  });
 
   const prep = prepFor(selectedDate);
   const defrost = defrostFor(nextDay);
@@ -402,7 +410,8 @@ function goToRecipe(dishId) {
 
 // ── Pick a dish for a slot ──────────────────────────
 function openDishPicker(slot) {
-  const slotTag = ["breakfast", "lunch", "dinner"].includes(slot) ? slot : null;
+  const base = slot.startsWith("kid_") ? slot.slice(4) : slot;   // kid_breakfast → breakfast
+  const slotTag = ["breakfast", "lunch", "dinner"].includes(base) ? base : null;
   const wrap = document.createElement("div");
   let search = null, showAll = null;
   if (dishes.length) {
