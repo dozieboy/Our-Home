@@ -30,9 +30,11 @@ export function renderHome() {
     { emoji: "💊", label: "Health", n: s.byCat.health },
   ].map((c) => `<span class="mini-chip">${c.emoji} ${c.label} <b>${c.n}</b></span>`).join("");
 
-  const menuRows = m.slots.map((sl) =>
-    `<div class="hm-slot"><span class="hm-slot-label">${sl.emoji} ${sl.label}</span>
-      <span class="hm-slot-dish ${sl.dishes.length ? "" : "muted"}">${sl.dishes.length ? esc(sl.dishes.join(", ")) : "—"}</span></div>`
+  const meals3 = m.slots.map((sl) =>
+    `<div class="hm-meal">
+      <div class="hm-meal-label">${sl.emoji}<br>${sl.label}</div>
+      <div class="hm-meal-dish ${sl.dishes.length ? "" : "muted"}">${sl.dishes.length ? esc(sl.dishes.join(", ")) : "—"}</div>
+    </div>`
   ).join("");
 
   let eventRows;
@@ -61,17 +63,24 @@ export function renderHome() {
       <div class="today muted">${todayText()}</div>
     </div>
 
-    <button class="dash-card" data-go="shopping">
-      <div class="dash-head"><span>🛒 Shopping</span><span class="chev">›</span></div>
-      <div class="dash-big"><b>${s.remaining}</b> item(s) to buy</div>
-      <div class="mini-chips">${catChips}</div>
-      ${st.out ? `<div class="restock-line">📦 ${st.out} stock item(s) out — restock</div>` : ""}
-    </button>
-
     <button class="dash-card" data-go="menu">
       <div class="dash-head"><span>🍳 Today's meals</span><span class="chev">›</span></div>
-      <div class="hm-slots">${menuRows}</div>
+      <div class="hm-meals3">${meals3}</div>
       ${m.defrostTomorrow.length ? `<div class="hm-defrost">🧊 Tomorrow: take out ${m.defrostTomorrow.map(esc).join(", ")}</div>` : ""}
+    </button>
+
+    <button class="dash-card" data-go="shopping" data-sub="list">
+      <div class="dash-head"><span>🛒 Shopping List</span><span class="chev">›</span></div>
+      <div class="dash-big"><b>${s.remaining}</b> item(s) to buy</div>
+      <div class="mini-chips">${catChips}</div>
+    </button>
+
+    <button class="dash-card" data-go="shopping" data-sub="staples">
+      <div class="dash-head"><span>📦 Stock</span><span class="chev">›</span></div>
+      ${st.total
+        ? `<div class="dash-big"><b>${st.total}</b> item(s) tracked</div>
+           <div class="${st.out ? "restock-line" : "muted done-line"}">${st.out ? `🔴 ${st.out} out — restock` : "✅ All in stock"}</div>`
+        : `<div class="muted">No stock items yet</div>`}
     </button>
 
     <button class="dash-card" data-go="calendar">
@@ -92,7 +101,11 @@ export function renderHome() {
   `;
 
   el.querySelectorAll("[data-go]").forEach((btn) =>
-    btn.addEventListener("click", () => setTab(btn.getAttribute("data-go"))));
+    btn.addEventListener("click", () => {
+      setTab(btn.getAttribute("data-go"));
+      const sub = btn.getAttribute("data-sub");
+      if (sub) { const b = document.querySelector(`[data-shopsub="${sub}"]`); if (b) b.click(); }
+    }));
 }
 
 function moduleCard(key, emoji, label) {

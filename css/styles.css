@@ -247,6 +247,11 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 .hm-slot { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: 14px; }
 .hm-slot-label { color: var(--muted); flex: 0 0 auto; }
 .hm-slot-dish { text-align: right; }
+.hm-meals3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+.hm-meal { background: var(--bg); border-radius: 12px; padding: 10px 6px; text-align: center; }
+.hm-meal-label { font-size: 12px; font-weight: 600; color: var(--muted); line-height: 1.35; margin-bottom: 6px; }
+.hm-meal-dish { font-size: 13px; font-weight: 600; word-break: break-word; }
+.hm-meal-dish.muted { font-weight: 400; }
 .hm-defrost { margin-top: 10px; font-size: 13px; background: #e0f2fe; color: #075985; padding: 8px 12px; border-radius: 10px; }
 
 /* Bottom sheet */
