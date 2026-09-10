@@ -22,6 +22,7 @@ let selectedDate = todayISO();
 let subTab = "today";   // 'today' | 'recipes'
 let expandedDish = null;
 let channels = [];
+let recipeSearch = "";          // filter text for the Recipes list
 let restockPanel = null;        // null | 'day' | 'week' — which restock preview is expanded
 let restockItems = [];          // shortfall items for the open panel
 let onShoppingList = new Set();  // lowercased names already on the shopping list
@@ -205,7 +206,7 @@ function renderRecipes() {
     const nIng = (d.ingredients || []).length;
     const open = expandedDish === d.id;
     const steps = (d.steps || "").split("\n").map((s) => s.trim()).filter(Boolean);
-    return `<div class="recipe ${open ? "open" : ""}">
+    return `<div class="recipe ${open ? "open" : ""}" data-rn="${esc(d.name.toLowerCase())}">
       <div class="recipe-head" data-expand="${d.id}">
         <div>
           <div class="recipe-name">${esc(d.name)}</div>
@@ -236,10 +237,26 @@ function renderRecipes() {
 
   body.innerHTML = `
     <button class="btn-primary full" id="add-recipe">＋ Add recipe</button>
-    ${dishes.length ? `<div class="recipe-list">${list}</div>`
+    ${dishes.length ? `<input type="search" id="recipe-search" class="search-box" placeholder="🔎 Search saved recipes…" value="${esc(recipeSearch)}">` : ""}
+    ${dishes.length ? `<div class="recipe-list">${list}</div><p class="empty" id="recipe-none" hidden>No recipe matches “<span></span>”</p>`
       : `<p class="empty">No recipes yet — add your first 📖</p>`}`;
 
+  const applyRecipeFilter = () => {
+    const q = recipeSearch.trim().toLowerCase();
+    let shown = 0;
+    body.querySelectorAll(".recipe").forEach((r) => {
+      const hit = !q || (r.dataset.rn || "").includes(q);
+      r.hidden = !hit;
+      if (hit) shown++;
+    });
+    const none = $("recipe-none");
+    if (none) { none.hidden = !(q && shown === 0); none.querySelector("span").textContent = recipeSearch.trim(); }
+  };
+
   $("add-recipe").addEventListener("click", () => openDishForm(null));
+  const rs = $("recipe-search");
+  if (rs) rs.addEventListener("input", () => { recipeSearch = rs.value; applyRecipeFilter(); });
+  applyRecipeFilter();
   body.querySelectorAll("[data-expand]").forEach((b) =>
     b.addEventListener("click", () => { const id = b.dataset.expand; expandedDish = expandedDish === id ? null : id; renderRecipes(); }));
   body.querySelectorAll("[data-editdish]").forEach((b) =>
@@ -368,20 +385,40 @@ function goToRecipe(dishId) {
 // ── Pick a dish for a slot ──────────────────────────
 function openDishPicker(slot) {
   const wrap = document.createElement("div");
-  if (!dishes.length) {
+  let search = null;
+  if (dishes.length) {
+    search = document.createElement("input");
+    search.type = "search";
+    search.className = "search-box";
+    search.placeholder = "🔎 Search saved recipes…";
+    wrap.appendChild(search);
+  } else {
     wrap.innerHTML = `<p class="muted">No recipes yet — create one first.</p>`;
   }
   const list = document.createElement("div");
   list.className = "picker-list";
+  const items = [];
   dishes.forEach((d) => {
     const diff = DIFF[d.difficulty] || DIFF.easy;
     const b = document.createElement("button");
     b.className = "picker-item";
+    b.dataset.rn = d.name.toLowerCase();
     b.innerHTML = `<span>${esc(d.name)}</span>${d.kind === "restaurant" ? `<span class="kind-badge rest">🍽️</span>` : `<span class="diff ${diff.cls}">${diff.label}</span>`}`;
     b.addEventListener("click", () => assignDish(slot, d.id));
     list.appendChild(b);
+    items.push(b);
   });
   wrap.appendChild(list);
+  const none = document.createElement("p");
+  none.className = "empty"; none.hidden = true;
+  wrap.appendChild(none);
+  if (search) search.addEventListener("input", () => {
+    const q = search.value.trim().toLowerCase();
+    let shown = 0;
+    items.forEach((b) => { const hit = !q || b.dataset.rn.includes(q); b.hidden = !hit; if (hit) shown++; });
+    none.hidden = !(q && shown === 0);
+    none.textContent = shown === 0 ? `No recipe matches “${search.value.trim()}”` : "";
+  });
   const newBtn = document.createElement("button");
   newBtn.className = "btn-primary full";
   newBtn.textContent = "＋ Create new recipe";
@@ -563,5 +600,6 @@ export function teardownMenu() {
   channels = [];
   dishes = []; plan = [];
   restockPanel = null; restockItems = []; onShoppingList = new Set();
+  recipeSearch = "";
   closeSheet();
 }
