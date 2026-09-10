@@ -32,7 +32,7 @@ export function renderHome() {
 
   const meals3 = m.slots.map((sl) =>
     `<div class="hm-meal">
-      <div class="hm-meal-label">${sl.emoji}<br>${sl.label}</div>
+      <div class="hm-meal-label"><span class="hm-meal-emoji">${sl.emoji}</span><br>${sl.label}</div>
       <div class="hm-meal-dish ${sl.dishes.length ? "" : "muted"}">${sl.dishes.length ? esc(sl.dishes.join(", ")) : "—"}</div>
     </div>`
   ).join("");
