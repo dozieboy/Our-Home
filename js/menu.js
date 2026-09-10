@@ -12,12 +12,12 @@ const BASE_SLOTS = [
   { key: "dinner", label: "Dinner", emoji: "🌙" },
 ];
 const KID_SLOTS = [
-  { key: "kid_breakfast", label: "Kid breakfast", emoji: "👶" },
-  { key: "kid_lunch", label: "Kid lunch", emoji: "👶" },
-  { key: "kid_dinner", label: "Kid dinner", emoji: "👶" },
+  { key: "kid_breakfast", label: "Kid breakfast", emoji: "👶🏻" },
+  { key: "kid_lunch", label: "Kid lunch", emoji: "👶🏻" },
+  { key: "kid_dinner", label: "Kid dinner", emoji: "👶🏻" },
 ];
 // includes legacy 'kid' for label lookup of any old entries
-const ALL_SLOTS = [...BASE_SLOTS, ...KID_SLOTS, { key: "kid", label: "Kid meal", emoji: "👶" }];
+const ALL_SLOTS = [...BASE_SLOTS, ...KID_SLOTS, { key: "kid", label: "Kid meal", emoji: "👶🏻" }];
 // Visible slots depend on whether the household has kids
 function slots() { return getHasKids() ? [...BASE_SLOTS, ...KID_SLOTS] : [...BASE_SLOTS]; }
 const DIFF = {
@@ -138,7 +138,7 @@ function renderToday() {
   let slotsHtml = "", kidShown = false;
   slots().forEach((s) => {
     const isKid = s.key.startsWith("kid_");
-    if (isKid && !kidShown) { slotsHtml += `<div class="slots-divider">👶 For the kids</div>`; kidShown = true; }
+    if (isKid && !kidShown) { slotsHtml += `<div class="slots-divider">👶🏻 For the kids</div>`; kidShown = true; }
     const entries = plan.filter((p) => p.plan_date === selectedDate && p.slot === s.key);
     const rows = entries.map((p) => {
       const d = dishFor(p.dish_id);

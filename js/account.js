@@ -57,7 +57,7 @@ export async function renderAccount() {
   const [members, kids] = await Promise.all([fetchMembers(), hasKids ? fetchKids() : Promise.resolve([])]);
   const meLc = (email || "").toLowerCase();
 
-  const kidEmoji = (g) => g === "boy" ? "👦" : g === "girl" ? "👧" : "👶";
+  const kidEmoji = (g) => g === "boy" ? "👦" : g === "girl" ? "👧" : "👶🏻";
   const kidRows = kids.map((k) => `
     <li class="item">
       <div class="body"><div class="name">${kidEmoji(k.gender)} ${esc(k.name)}</div>
@@ -88,13 +88,13 @@ export async function renderAccount() {
     </div>
 
     <div class="acct-card">
-      <label class="kids-toggle"><input type="checkbox" id="kids-on" ${hasKids ? "checked" : ""}> <span>👶 We have kids</span></label>
+      <label class="kids-toggle"><input type="checkbox" id="kids-on" ${hasKids ? "checked" : ""}> <span>👶🏻 We have kids</span></label>
       <div id="kids-box" ${hasKids ? "" : "hidden"}>
         <p class="muted acct-sub">Add each child's name &amp; birthday. This also adds a “Kid meal” slot in Meals.</p>
         <form id="kid-form" class="fam-form">
           <input type="text" id="kid-name" placeholder="Kid's name" required>
           <select id="kid-gender" class="kid-gender">
-            <option value="">👶</option>
+            <option value="">👶🏻</option>
             <option value="boy">👦 Boy</option>
             <option value="girl">👧 Girl</option>
           </select>
