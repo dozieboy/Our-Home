@@ -22,6 +22,9 @@ let selectedDate = todayISO();
 let subTab = "today";   // 'today' | 'recipes'
 let expandedDish = null;
 let channels = [];
+let restockPanel = null;        // null | 'day' | 'week' — which restock preview is expanded
+let restockItems = [];          // shortfall items for the open panel
+let onShoppingList = new Set();  // lowercased names already on the shopping list
 
 // ── Date helpers ────────────────────────────────────
 function isoDate(d) {
@@ -146,9 +149,11 @@ function renderToday() {
     <div class="slots">${slotsHtml}</div>
 
     ${plan.some((p) => p.plan_date === selectedDate)
-      ? `<button class="btn-primary full" id="add-missing-day">🛒 Add missing for ${dayLabel(selectedDate)}</button>` : ""}
+      ? `<button class="btn-primary full restock-toggle" id="add-missing-day">🛒 Missing for ${dayLabel(selectedDate)} <span class="caret">${restockPanel === "day" ? "▾" : "▸"}</span></button>
+         ${restockPanel === "day" ? renderRestockPanel() : ""}` : ""}
     ${plan.some((p) => p.plan_date >= todayISO() && p.plan_date <= addDays(todayISO(), 6))
-      ? `<button class="link-btn week-restock" id="add-missing-week">🛒 Prep shopping for the next 7 days</button>` : ""}
+      ? `<button class="link-btn week-restock" id="add-missing-week">🛒 Prep shopping for the next 7 days <span class="caret">${restockPanel === "week" ? "▾" : "▸"}</span></button>
+         ${restockPanel === "week" ? renderRestockPanel() : ""}` : ""}
 
     <div class="prep-box">
       <div class="prep-title">🧂 To prep (ingredients — ${dayLabel(selectedDate)})</div>
@@ -163,17 +168,21 @@ function renderToday() {
     </div>`;
 
   body.querySelectorAll("[data-datenav]").forEach((b) =>
-    b.addEventListener("click", () => { selectedDate = addDays(selectedDate, +b.dataset.datenav); renderToday(); }));
+    b.addEventListener("click", () => { selectedDate = addDays(selectedDate, +b.dataset.datenav); restockPanel = null; renderToday(); }));
   const todayBtn = $("date-today");
-  if (todayBtn) todayBtn.addEventListener("click", () => { selectedDate = todayISO(); renderToday(); });
+  if (todayBtn) todayBtn.addEventListener("click", () => { selectedDate = todayISO(); restockPanel = null; renderToday(); });
   body.querySelectorAll("[data-addslot]").forEach((b) =>
     b.addEventListener("click", () => openDishPicker(b.dataset.addslot)));
   body.querySelectorAll("[data-delplan]").forEach((b) =>
     b.addEventListener("click", () => removePlan(b.dataset.delplan)));
   const amd = $("add-missing-day");
-  if (amd) amd.addEventListener("click", () => addMissingForDate(selectedDate));
+  if (amd) amd.addEventListener("click", () => openRestockPanel("day"));
   const amw = $("add-missing-week");
-  if (amw) amw.addEventListener("click", addMissingForWeek);
+  if (amw) amw.addEventListener("click", () => openRestockPanel("week"));
+  const addAll = $("restock-addall");
+  if (addAll) addAll.addEventListener("click", restockAddAll);
+  body.querySelectorAll("[data-addone]").forEach((b) =>
+    b.addEventListener("click", () => restockAddOne(+b.dataset.addone)));
 }
 
 function renderRecipes() {
@@ -274,25 +283,56 @@ function ingredientsInRange(from, to) {
   return ings;
 }
 
-// Check every dish planned for a single date and add whatever is missing/short.
-async function addMissingForDate(iso) {
-  const ings = ingredientsInRange(iso, iso);
-  if (!ings.length) { toast("No meals planned for this day"); return; }
-  const toBuy = shortfallFor(ings);
-  if (!toBuy.length) { toast("You have everything for these meals ✓"); return; }
-  const added = await addToShopping(toBuy);
-  toast(added ? `Added ${added} to shopping list 🛒` : "Already on the list");
+// Expand/collapse the restock preview for a single day ('day') or the week ('week').
+async function openRestockPanel(kind) {
+  if (restockPanel === kind) { restockPanel = null; restockItems = []; renderToday(); return; }
+  const ings = kind === "week"
+    ? ingredientsInRange(todayISO(), addDays(todayISO(), 6))
+    : ingredientsInRange(selectedDate, selectedDate);
+  restockItems = shortfallFor(ings);
+  const { data } = await supabase.from("shopping_items").select("name").eq("category", "food");
+  onShoppingList = new Set((data || []).map((r) => (r.name || "").trim().toLowerCase()));
+  restockPanel = kind;
+  renderToday();
 }
 
-// Prep ahead: check the next 7 days of planned meals and add what's missing/short.
-async function addMissingForWeek() {
-  const start = todayISO();
-  const ings = ingredientsInRange(start, addDays(start, 6));
-  if (!ings.length) { toast("No meals planned this week"); return; }
-  const toBuy = shortfallFor(ings);
-  if (!toBuy.length) { toast("You have everything for this week ✓"); return; }
-  const added = await addToShopping(toBuy);
-  toast(added ? `Added ${added} for the week 🛒` : "Already on the list");
+// The collapsible list of missing/short ingredients, each addable on its own.
+function renderRestockPanel() {
+  if (!restockItems.length) return `<div class="restock-box ok">✅ You have everything — nothing to buy</div>`;
+  const pending = restockItems.filter((b) => !onShoppingList.has(b.name.trim().toLowerCase())).length;
+  const rows = restockItems.map((b, idx) => {
+    const on = onShoppingList.has(b.name.trim().toLowerCase());
+    return `<li class="item">
+      <div class="body"><div class="name">${esc(b.name)}</div>${b.grams ? `<div class="meta">need ${Math.round(b.grams)} g</div>` : ""}</div>
+      ${on ? `<span class="on-list-tag">✓ On list</span>`
+           : `<button class="mini-action cart" data-addone="${idx}">🛒 Add</button>`}
+    </li>`;
+  }).join("");
+  return `<div class="restock-box">
+    <div class="restock-head">🔴 Missing (${restockItems.length})${pending ? ` <button class="link-btn" id="restock-addall">Add all</button>` : ""}</div>
+    <ul class="item-list">${rows}</ul></div>`;
+}
+
+async function restockAddOne(idx) {
+  const b = restockItems[idx];
+  if (!b) return;
+  const key = b.name.trim().toLowerCase();
+  if (onShoppingList.has(key)) return;
+  const qty = b.grams ? `${Math.round(b.grams)} g` : null;
+  const { error } = await supabase.from("shopping_items").insert({ name: b.name, category: "food", qty, created_by: whoami() || null });
+  if (error) { toast("Couldn't add"); return; }
+  onShoppingList.add(key);
+  toast("Added: " + b.name);
+  renderToday();
+}
+
+async function restockAddAll() {
+  const pending = restockItems.filter((b) => !onShoppingList.has(b.name.trim().toLowerCase()));
+  if (!pending.length) { toast("Already on the list"); return; }
+  const added = await addToShopping(pending);
+  pending.forEach((b) => onShoppingList.add(b.name.trim().toLowerCase()));
+  toast(added ? `Added ${added} 🛒` : "Already on the list");
+  renderToday();
 }
 
 // ── Pick a dish for a slot ──────────────────────────
@@ -460,5 +500,6 @@ export function teardownMenu() {
   channels.forEach((c) => supabase.removeChannel(c));
   channels = [];
   dishes = []; plan = [];
+  restockPanel = null; restockItems = []; onShoppingList = new Set();
   closeSheet();
 }
