@@ -60,6 +60,9 @@ async function setQty(id) {
 }
 const stockLabel = (s) => s.qty_g != null ? `${s.qty_g}${s.unit === "ea" ? " EA" : " g"}` : "";
 
+// All stock item names (for ingredient autocomplete in Meals)
+export function getStockNames() { return staples.map((s) => (s.name || "").trim()).filter(Boolean); }
+
 // Read stock level for a name (used by Meals to check ingredients)
 export function getStockByName(name) {
   const key = (name || "").trim().toLowerCase();

@@ -1,7 +1,7 @@
 import { supabase } from "./supabase.js";
 import { toast, whoami } from "./app.js";
 import { openSheet, closeSheet, esc } from "./ui.js";
-import { getStockByName } from "./staples.js";
+import { getStockByName, getStockNames } from "./staples.js";
 import { getHasKids } from "./settings.js";
 
 const $ = (id) => document.getElementById(id);
@@ -466,6 +466,12 @@ async function removePlan(id) {
 // ── Add / edit recipe form ──────────────────────────
 function openDishForm(dishId) {
   const d = dishId ? dishFor(dishId) : null;
+  // Autocomplete suggestions: ingredient names used before + stock item names
+  const known = [...new Set([
+    ...dishes.flatMap((x) => (x.ingredients || []).map((i) => (i.name || "").trim())),
+    ...getStockNames(),
+  ].filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const ingOptions = known.map((n) => `<option value="${esc(n)}"></option>`).join("");
   const form = document.createElement("div");
   form.className = "dish-form";
   form.innerHTML = `
@@ -494,6 +500,7 @@ function openDishForm(dishId) {
         </select>
       </label>
       <div class="df-ing-label">Ingredients <span class="muted">(tick 🧊 if frozen and needs defrosting)</span></div>
+      <datalist id="ing-names">${ingOptions}</datalist>
       <div id="df-ings"></div>
       <button type="button" class="link-btn" id="df-add-ing">＋ Add ingredient</button>
       <label>Steps <span class="muted">(one per line)</span>
@@ -526,7 +533,7 @@ function openDishForm(dishId) {
     const row = document.createElement("div");
     row.className = "ing-row";
     row.innerHTML = `
-      <input type="text" class="ing-name" placeholder="Ingredient" value="${esc(name)}">
+      <input type="text" class="ing-name" list="ing-names" placeholder="Ingredient" value="${esc(name)}">
       <input type="number" class="ing-g" placeholder="qty" min="0" inputmode="decimal" value="${qty != null ? qty : ""}">
       <select class="ing-unit"><option value="g">g</option><option value="ea">EA</option></select>
       <label class="ing-frost"><input type="checkbox" class="ing-defrost" ${defrost ? "checked" : ""}> 🧊</label>
