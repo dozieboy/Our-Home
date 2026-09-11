@@ -497,11 +497,12 @@ async function removePlan(id) {
 // ── Add / edit recipe form ──────────────────────────
 function openDishForm(dishId) {
   const d = dishId ? dishFor(dishId) : null;
-  // Autocomplete suggestions: ingredient names used before + stock item names
-  const known = [...new Set([
-    ...dishes.flatMap((x) => (x.ingredients || []).map((i) => (i.name || "").trim())),
-    ...getStockNames(),
-  ].filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  // Autocomplete suggestions: ingredient names used before + stock item names.
+  // Dedupe by normalized key so "Tuna can" / "Tuna Can" collapse to one suggestion.
+  const seenNames = new Map();
+  [...dishes.flatMap((x) => (x.ingredients || []).map((i) => (i.name || "").trim())), ...getStockNames()]
+    .forEach((n) => { const t = (n || "").trim(); if (t && !seenNames.has(norm(t))) seenNames.set(norm(t), t); });
+  const known = [...seenNames.values()].sort((a, b) => a.localeCompare(b));
   const ingOptions = known.map((n) => `<option value="${esc(n)}"></option>`).join("");
   const form = document.createElement("div");
   form.className = "dish-form";
@@ -564,7 +565,15 @@ function openDishForm(dishId) {
       <button type="button" class="ing-del">✕</button>`;
     row.querySelector(".ing-unit").value = unit === "ea" ? "ea" : "g";
     row.querySelector(".ing-del").addEventListener("click", () => row.remove());
+    const nm = row.querySelector(".ing-name");
+    nm.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {   // Enter → jump to a fresh ingredient row
+        e.preventDefault();
+        if (nm.value.trim()) { const r = addIngRow(); r.querySelector(".ing-name").focus(); }
+      }
+    });
     ingBox.appendChild(row);
+    return row;
   };
   (d?.ingredients?.length ? d.ingredients : [{ name: "", defrost: false }]).forEach((i) => {
     const { qty, unit } = ingQty(i);
