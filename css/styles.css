@@ -120,7 +120,7 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 .cat-household .dot { background: var(--household); }
 .cat-health .dot { background: var(--health); }
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-.cat-sel { flex: 0 0 auto; width: 46px; padding: 6px 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-family: inherit; font-size: 15px; text-align: center; cursor: pointer; }
+.cat-sel { flex: 0 0 auto; width: 116px; max-width: 40vw; padding: 6px 4px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-family: inherit; font-size: 13px; cursor: pointer; }
 
 .item-list { list-style: none; margin: 0; padding: 0; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; }
 .item {

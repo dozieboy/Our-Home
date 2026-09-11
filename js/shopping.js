@@ -204,7 +204,7 @@ function render() {
       const li = document.createElement("li");
       li.className = "item" + (it.checked ? " done" : "");
       const meta = [it.qty, it.created_by].filter(Boolean).join(" · ");
-      const catOpts = CATEGORIES.map((c) => `<option value="${c.key}" ${c.key === it.category ? "selected" : ""}>${c.emoji}</option>`).join("");
+      const catOpts = CATEGORIES.map((c) => `<option value="${c.key}" ${c.key === it.category ? "selected" : ""}>${c.emoji} ${c.label}</option>`).join("");
       li.innerHTML = `
         <button class="check" aria-label="buy">${it.checked ? "✓" : ""}</button>
         <div class="body">
