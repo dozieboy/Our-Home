@@ -317,10 +317,10 @@ function shortfallFor(ingredients) {
 async function addToShopping(toBuy) {
   let added = 0;
   for (const b of toBuy) {
-    const { data } = await supabase.from("shopping_items").select("id").eq("name", b.name).eq("category", "food").limit(1);
+    const { data } = await supabase.from("shopping_items").select("id").eq("name", b.name).eq("category", "ingredient").limit(1);
     if (data && data.length) continue;   // already on the list
     const qty = b.qty ? qtyStr(b.qty, b.unit) : null;
-    const { error } = await supabase.from("shopping_items").insert({ name: b.name, category: "food", qty, created_by: whoami() || null });
+    const { error } = await supabase.from("shopping_items").insert({ name: b.name, category: "ingredient", qty, created_by: whoami() || null });
     if (!error) added++;
   }
   return added;
@@ -353,7 +353,7 @@ async function openRestockPanel(kind) {
     ? ingredientsInRange(todayISO(), addDays(todayISO(), 6))
     : ingredientsInRange(selectedDate, selectedDate);
   restockItems = shortfallFor(ings);
-  const { data } = await supabase.from("shopping_items").select("name").eq("category", "food");
+  const { data } = await supabase.from("shopping_items").select("name").eq("category", "ingredient");
   onShoppingList = new Set((data || []).map((r) => (r.name || "").trim().toLowerCase()));
   restockPanel = kind;
   renderToday();
@@ -382,7 +382,7 @@ async function restockAddOne(idx) {
   const key = b.name.trim().toLowerCase();
   if (onShoppingList.has(key)) return;
   const qty = b.grams ? `${Math.round(b.grams)} g` : null;
-  const { error } = await supabase.from("shopping_items").insert({ name: b.name, category: "food", qty, created_by: whoami() || null });
+  const { error } = await supabase.from("shopping_items").insert({ name: b.name, category: "ingredient", qty, created_by: whoami() || null });
   if (error) { toast("Couldn't add"); return; }
   onShoppingList.add(key);
   toast("Added: " + b.name);
