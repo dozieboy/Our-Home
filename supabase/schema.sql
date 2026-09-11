@@ -15,6 +15,11 @@ create table if not exists public.shopping_items (
   updated_at  timestamptz not null default now()
 );
 
+-- allow the 'ingredient' category (added later) — safe to re-run
+alter table public.shopping_items drop constraint if exists shopping_items_category_check;
+alter table public.shopping_items add constraint shopping_items_category_check
+  check (category in ('food','ingredient','household','health'));
+
 -- อัปเดต updated_at อัตโนมัติทุกครั้งที่แก้
 create or replace function public.set_updated_at()
 returns trigger language plpgsql as $$

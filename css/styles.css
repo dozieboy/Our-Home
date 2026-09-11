@@ -8,6 +8,7 @@
   --primary-dark: #0d5c56;
   --danger: #dc2626;
   --food: #16a34a;
+  --ingredient: #f59e0b;
   --household: #2563eb;
   --health: #db2777;
   --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
@@ -115,6 +116,7 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 .category-head { display: flex; align-items: center; gap: 8px; margin: 0 4px 8px; font-size: 15px; font-weight: 700; }
 .category-head .count { color: var(--muted); font-weight: 500; font-size: 13px; }
 .cat-food .dot { background: var(--food); }
+.cat-ingredient .dot { background: var(--ingredient); }
 .cat-household .dot { background: var(--household); }
 .cat-health .dot { background: var(--health); }
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }

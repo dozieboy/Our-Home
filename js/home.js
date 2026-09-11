@@ -39,6 +39,7 @@ export function renderHome() {
 
   const catChips = [
     { emoji: "🍎", label: "Food", n: s.byCat.food },
+    { emoji: "🥕", label: "Ingredient", n: s.byCat.ingredient },
     { emoji: "🏠", label: "Household", n: s.byCat.household },
     { emoji: "💊", label: "Health", n: s.byCat.health },
   ].map((c) => `<span class="mini-chip">${c.emoji} ${c.label} <b>${c.n}</b></span>`).join("");

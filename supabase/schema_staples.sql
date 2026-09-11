@@ -17,6 +17,11 @@ create table if not exists public.staples (
 alter table public.staples add column if not exists qty_g numeric;
 alter table public.staples add column if not exists unit text not null default 'g';
 
+-- allow the 'ingredient' category (added later) — safe to re-run
+alter table public.staples drop constraint if exists staples_category_check;
+alter table public.staples add constraint staples_category_check
+  check (category in ('food','ingredient','household','health'));
+
 drop trigger if exists trg_staples_updated on public.staples;
 create trigger trg_staples_updated
   before update on public.staples

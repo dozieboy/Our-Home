@@ -4,6 +4,7 @@ import { toast, whoami } from "./app.js";
 const $ = (id) => document.getElementById(id);
 const CATS = [
   { key: "food", emoji: "🍎", label: "Food" },
+  { key: "ingredient", emoji: "🥕", label: "Ingredient" },
   { key: "household", emoji: "🏠", label: "Household" },
   { key: "health", emoji: "💊", label: "Health" },
 ];
@@ -173,8 +174,9 @@ function render() {
       <input type="text" id="staple-name" placeholder="Add a staple… (e.g. Dish soap)" required />
       <div class="add-row">
         <select id="staple-cat">
-          <option value="household">🏠 Household</option>
           <option value="food">🍎 Food</option>
+          <option value="ingredient">🥕 Ingredient</option>
+          <option value="household">🏠 Household</option>
           <option value="health">💊 Health</option>
         </select>
         <input type="number" id="staple-g" class="staple-g" placeholder="qty" min="0" inputmode="decimal" />
