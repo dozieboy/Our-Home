@@ -61,6 +61,8 @@ function ingQty(i) {
   return { qty: q != null ? Number(q) : null, unit: i.unit === "ea" ? "ea" : "g" };
 }
 const unitLabel = (u) => (u === "ea" ? "EA" : "g");
+// Normalized key for name matching: trim, lowercase, drop all whitespace
+const norm = (s) => (s || "").trim().toLowerCase().replace(/\s+/g, "");
 const qtyTag = (qty, unit) => `${qty}${unit === "ea" ? " EA" : "g"}`;       // compact tag, e.g. 2 EA / 500g
 const qtyStr = (qty, unit) => `${Math.round(Number(qty))} ${unitLabel(unit)}`; // shopping qty, e.g. 2 EA / 150 g
 
@@ -106,7 +108,7 @@ function prepFor(iso) {
     const d = dishFor(p.dish_id);
     (d?.ingredients || []).forEach((ing) => {
       if (!ing.name) return;
-      const key = ing.name.trim().toLowerCase();
+      const key = norm(ing.name);
       const { qty, unit } = ingQty(ing);
       const cur = map.get(key) || { name: ing.name, qty: 0, unit };
       if (cur.unit === unit) cur.qty += qty || 0;   // only sum matching units
@@ -300,7 +302,7 @@ function shortfallFor(ingredients) {
   const seen = new Set();
   for (const ing of ingredients || []) {
     if (!ing.name) continue;
-    const key = ing.name.trim().toLowerCase();
+    const key = norm(ing.name);
     if (seen.has(key)) continue;   // dedup across dishes
     seen.add(key);
     const st = getStockByName(ing.name);
@@ -315,13 +317,14 @@ function shortfallFor(ingredients) {
 }
 
 async function addToShopping(toBuy) {
+  const { data } = await supabase.from("shopping_items").select("name").eq("category", "ingredient");
+  const existing = new Set((data || []).map((r) => norm(r.name)));   // normalized → ignores case/spaces
   let added = 0;
   for (const b of toBuy) {
-    const { data } = await supabase.from("shopping_items").select("id").eq("name", b.name).eq("category", "ingredient").limit(1);
-    if (data && data.length) continue;   // already on the list
+    if (existing.has(norm(b.name))) continue;   // already on the list (any spacing/case)
     const qty = b.qty ? qtyStr(b.qty, b.unit) : null;
     const { error } = await supabase.from("shopping_items").insert({ name: b.name, category: "ingredient", qty, created_by: whoami() || null });
-    if (!error) added++;
+    if (!error) { added++; existing.add(norm(b.name)); }
   }
   return added;
 }
@@ -354,7 +357,7 @@ async function openRestockPanel(kind) {
     : ingredientsInRange(selectedDate, selectedDate);
   restockItems = shortfallFor(ings);
   const { data } = await supabase.from("shopping_items").select("name").eq("category", "ingredient");
-  onShoppingList = new Set((data || []).map((r) => (r.name || "").trim().toLowerCase()));
+  onShoppingList = new Set((data || []).map((r) => norm(r.name)));
   restockPanel = kind;
   renderToday();
 }
@@ -362,9 +365,9 @@ async function openRestockPanel(kind) {
 // The collapsible list of missing/short ingredients, each addable on its own.
 function renderRestockPanel() {
   if (!restockItems.length) return `<div class="restock-box ok">✅ You have everything — nothing to buy</div>`;
-  const pending = restockItems.filter((b) => !onShoppingList.has(b.name.trim().toLowerCase())).length;
+  const pending = restockItems.filter((b) => !onShoppingList.has(norm(b.name))).length;
   const rows = restockItems.map((b, idx) => {
-    const on = onShoppingList.has(b.name.trim().toLowerCase());
+    const on = onShoppingList.has(norm(b.name));
     return `<li class="item">
       <div class="body"><div class="name">${esc(b.name)}</div>${b.qty ? `<div class="meta">need ${qtyStr(b.qty, b.unit)}</div>` : ""}</div>
       ${on ? `<span class="on-list-tag">✓ On list</span>`
@@ -379,9 +382,9 @@ function renderRestockPanel() {
 async function restockAddOne(idx) {
   const b = restockItems[idx];
   if (!b) return;
-  const key = b.name.trim().toLowerCase();
+  const key = norm(b.name);
   if (onShoppingList.has(key)) return;
-  const qty = b.grams ? `${Math.round(b.grams)} g` : null;
+  const qty = b.qty ? qtyStr(b.qty, b.unit) : null;
   const { error } = await supabase.from("shopping_items").insert({ name: b.name, category: "ingredient", qty, created_by: whoami() || null });
   if (error) { toast("Couldn't add"); return; }
   onShoppingList.add(key);
@@ -390,10 +393,10 @@ async function restockAddOne(idx) {
 }
 
 async function restockAddAll() {
-  const pending = restockItems.filter((b) => !onShoppingList.has(b.name.trim().toLowerCase()));
+  const pending = restockItems.filter((b) => !onShoppingList.has(norm(b.name)));
   if (!pending.length) { toast("Already on the list"); return; }
   const added = await addToShopping(pending);
-  pending.forEach((b) => onShoppingList.add(b.name.trim().toLowerCase()));
+  pending.forEach((b) => onShoppingList.add(norm(b.name)));
   toast(added ? `Added ${added} 🛒` : "Already on the list");
   renderToday();
 }

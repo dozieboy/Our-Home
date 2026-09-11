@@ -14,7 +14,8 @@ let staples = [];
 let onList = new Set();   // items already on the shopping list (name|category)
 let channel = null;
 
-const keyOf = (name, cat) => (name || "").trim().toLowerCase() + "|" + cat;
+const norm = (s) => (s || "").trim().toLowerCase().replace(/\s+/g, "");   // ignore case & spaces when matching
+const keyOf = (name, cat) => norm(name) + "|" + cat;
 
 async function refreshOnList() {
   const { data } = await supabase.from("shopping_items").select("name,category");
@@ -74,11 +75,23 @@ async function adjustQty(id, dir) {
 // All stock item names (for ingredient autocomplete in Meals)
 export function getStockNames() { return staples.map((s) => (s.name || "").trim()).filter(Boolean); }
 
+async function renameStaple(id) {
+  const s = staples.find((x) => x.id === id);
+  if (!s) return;
+  const v = prompt("Edit name:", s.name);
+  if (v === null) return;
+  const name = v.trim();
+  if (!name || name === s.name) return;
+  s.name = name; render();   // optimistic
+  const { error } = await supabase.from("staples").update({ name }).eq("id", id);
+  if (error) { toast("Couldn't rename"); await reload(); }
+}
+
 // Read stock level for a name (used by Meals to check ingredients)
 export function getStockByName(name) {
-  const key = (name || "").trim().toLowerCase();
+  const key = norm(name);
   if (!key) return null;
-  return staples.find((s) => s.name.trim().toLowerCase() === key) || null;
+  return staples.find((s) => norm(s.name) === key) || null;
 }
 async function toggleStock(id, next) {
   const s = staples.find((x) => x.id === id);
@@ -124,7 +137,7 @@ export async function markInStockByNameCat(name, category, addQty, addUnit) {
   const key = (name || "").trim();
   if (!key) return;
   const u = addUnit === "ea" ? "ea" : "g";
-  const existing = staples.find((s) => s.name.trim().toLowerCase() === key.toLowerCase() && s.category === category);
+  const existing = staples.find((s) => norm(s.name) === norm(key) && s.category === category);
   if (existing) {
     const patch = { in_stock: true };
     if (addQty) {
@@ -153,7 +166,7 @@ function render() {
     if (!items.length) return "";
     const rows = items.map((s) => `
       <li class="item staple ${s.in_stock ? "" : "out"}">
-        <div class="body"><div class="name">${esc(s.name)}</div>${s.qty_g != null ? `<div class="meta">${stockLabel(s)} in stock</div>` : ""}</div>
+        <div class="body"><div class="name staple-name" data-rename="${s.id}">${esc(s.name)} <span class="ren">✏️</span></div>${s.qty_g != null ? `<div class="meta">${stockLabel(s)} in stock</div>` : ""}</div>
         ${s.qty_g != null
           ? `<div class="qty-step">
                <button class="qbtn" data-qadj="${s.id}" data-d="-1" aria-label="less">−</button>
@@ -216,6 +229,8 @@ function render() {
     b.addEventListener("click", () => setQty(b.dataset.setg)));
   el.querySelectorAll("[data-qadj]").forEach((b) =>
     b.addEventListener("click", () => adjustQty(b.dataset.qadj, +b.dataset.d)));
+  el.querySelectorAll("[data-rename]").forEach((b) =>
+    b.addEventListener("click", () => renameStaple(b.dataset.rename)));
   const all = $("restock-all");
   if (all) all.addEventListener("click", addAllOutToShopping);
   el.querySelectorAll("[data-toggle]").forEach((b) =>
