@@ -137,6 +137,19 @@ async function editItem(id) {
   if (error) { it.name = old; render(); toast("Couldn't update"); }
 }
 
+// ── Change an item's category (Food / Ingredient / …) ──
+async function changeCategory(id, category) {
+  const it = items.find((i) => i.id === id);
+  if (!it || String(id).startsWith("tmp-")) return;
+  const old = it.category;
+  if (category === old) return;
+  it.category = category; render();   // moves it to the new category group
+  const { error } = await supabase.from("shopping_items").update({ category }).eq("id", id);
+  if (error) { it.category = old; render(); toast("Couldn't update"); return; }
+  const c = CATEGORIES.find((x) => x.key === category);
+  toast(`→ ${c ? c.emoji + " " + c.label : category}`);
+}
+
 // ── Realtime ────────────────────────────────────────
 function subscribe() {
   channel = supabase
@@ -191,17 +204,20 @@ function render() {
       const li = document.createElement("li");
       li.className = "item" + (it.checked ? " done" : "");
       const meta = [it.qty, it.created_by].filter(Boolean).join(" · ");
+      const catOpts = CATEGORIES.map((c) => `<option value="${c.key}" ${c.key === it.category ? "selected" : ""}>${c.emoji}</option>`).join("");
       li.innerHTML = `
         <button class="check" aria-label="buy">${it.checked ? "✓" : ""}</button>
         <div class="body">
           <div class="name"></div>
           ${meta ? `<div class="meta"></div>` : ""}
         </div>
+        <select class="cat-sel" aria-label="category">${catOpts}</select>
         <button class="del" aria-label="delete">🗑</button>`;
       li.querySelector(".name").textContent = it.name;
       if (meta) li.querySelector(".meta").textContent = meta;
       li.querySelector(".check").addEventListener("click", () => buyItem(it.id));
       li.querySelector(".body").addEventListener("click", () => editItem(it.id));
+      li.querySelector(".cat-sel").addEventListener("change", (e) => changeCategory(it.id, e.target.value));
       li.querySelector(".del").addEventListener("click", () => deleteItem(it.id));
       ul.appendChild(li);
     }
