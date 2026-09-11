@@ -79,16 +79,16 @@ async function reload() {
 }
 
 // ── Summary for Home ────────────────────────────────
-export function getTodayMenuSummary() {
-  const t = todayISO();
+export function getMenuSummaryFor(iso) {
   const slotList = slots().map((s) => {
-    const names = plan.filter((p) => p.plan_date === t && p.slot === s.key)
+    const names = plan.filter((p) => p.plan_date === iso && p.slot === s.key)
       .map((p) => dishFor(p.dish_id)?.name).filter(Boolean);
     return { key: s.key, label: s.label, emoji: s.emoji, dishes: names };
   });
-  const defrost = defrostFor(addDays(t, 1));
+  const defrost = defrostFor(addDays(iso, 1));
   return { slots: slotList, defrostTomorrow: defrost };
 }
+export function getTodayMenuSummary() { return getMenuSummaryFor(todayISO()); }
 
 // Frozen ingredients to defrost for a given date
 function defrostFor(iso) {
@@ -513,13 +513,6 @@ function openDishForm(dishId) {
       ${BASE_SLOTS.map((s) => `<label class="tag-check"><input type="checkbox" class="mt-check" value="${s.key}"> ${s.emoji} ${s.label}</label>`).join("")}
     </div>
     <div id="cook-fields">
-      <div class="search-row">
-        <span class="muted">Find a recipe:</span>
-        <a class="chip-btn" data-search="google" target="_blank" rel="noopener">🔎 Google</a>
-        <a class="chip-btn" data-search="youtube" target="_blank" rel="noopener">▶️ YouTube</a>
-        <a class="chip-btn" data-search="tiktok" target="_blank" rel="noopener">🎵 TikTok</a>
-        <a class="chip-btn" data-search="cookpad" target="_blank" rel="noopener">🍳 Cookpad</a>
-      </div>
       <label>Difficulty
         <select id="df-diff">
           <option value="easy">Easy</option>
@@ -575,24 +568,6 @@ function openDishForm(dishId) {
     addIngRow(i.name, i.defrost, qty != null ? qty : "", unit);
   });
   form.querySelector("#df-add-ing").addEventListener("click", () => addIngRow());
-
-  // Recipe search links — real <a> (opens more reliably than window.open on PWA/iOS)
-  const nameInput = form.querySelector("#df-name");
-  const updateSearchLinks = () => {
-    const q = nameInput.value.trim();
-    const enc = encodeURIComponent(q + " recipe");
-    const urls = {
-      google: "https://www.google.com/search?q=" + enc,
-      youtube: "https://www.youtube.com/results?search_query=" + enc,
-      tiktok: "https://www.tiktok.com/search?q=" + enc,
-      cookpad: "https://cookpad.com/en/search/" + encodeURIComponent(q),
-    };
-    form.querySelectorAll("[data-search]").forEach((a) => { a.href = q ? urls[a.dataset.search] : "#"; });
-  };
-  nameInput.addEventListener("input", updateSearchLinks);
-  updateSearchLinks();
-  form.querySelectorAll("[data-search]").forEach((a) =>
-    a.addEventListener("click", (e) => { if (!nameInput.value.trim()) { e.preventDefault(); toast("Enter a dish name first"); } }));
 
   form.querySelector("#df-save").addEventListener("click", () => saveDish(dishId, form));
 }

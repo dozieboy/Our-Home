@@ -1,6 +1,6 @@
 import { getShoppingSummary } from "./shopping.js";
 import { getStaplesSummary } from "./staples.js";
-import { getTodayMenuSummary } from "./menu.js";
+import { getMenuSummaryFor } from "./menu.js";
 import { getPetsSummary } from "./pets.js";
 import { getFinanceSummary } from "./finance.js";
 import { getHomeName } from "./settings.js";
@@ -14,13 +14,25 @@ function todayText() {
   } catch { return ""; }
 }
 
+// Which day the Today's-meals card is showing (0 = today). Swipe/arrows change it.
+let homeMealOffset = 0;
+const pad = (n) => String(n).padStart(2, "0");
+function offsetISO(n) { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+function offsetLabel(n) {
+  if (n === 0) return "Today";
+  if (n === -1) return "Yesterday";
+  if (n === 1) return "Tomorrow";
+  const d = new Date(); d.setDate(d.getDate() + n);
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
+}
+
 export function renderHome() {
   const el = $("screen-home");
   const title = $("screen-title");
   if (title) title.textContent = getHomeName() || "Home";   // custom household name in the top bar
   const s = getShoppingSummary();
   const st = getStaplesSummary();
-  const m = getTodayMenuSummary();
+  const m = getMenuSummaryFor(offsetISO(homeMealOffset));
   const pet = getPetsSummary();
   const fin = getFinanceSummary();
   const name = whoami();
@@ -52,11 +64,15 @@ export function renderHome() {
       <div class="today muted">${todayText()}</div>
     </div>
 
-    <button class="dash-card" data-go="menu">
-      <div class="dash-head"><span>🍳 Today's meals</span><span class="chev">›</span></div>
+    <div class="dash-card hm-meal-card">
+      <div class="hm-meal-head">
+        <button class="hm-day-nav" data-dayoff="-1" aria-label="previous day">‹</button>
+        <button class="hm-day-title" data-go="menu">🍳 ${offsetLabel(homeMealOffset)}'s meals ›</button>
+        <button class="hm-day-nav" data-dayoff="1" aria-label="next day">›</button>
+      </div>
       <div class="hm-meals3">${meals3}</div>
-      ${m.defrostTomorrow.length ? `<div class="hm-defrost">🧊 Tomorrow: take out ${m.defrostTomorrow.map(esc).join(", ")}</div>` : ""}
-    </button>
+      ${homeMealOffset === 0 && m.defrostTomorrow.length ? `<div class="hm-defrost">🧊 Tomorrow: take out ${m.defrostTomorrow.map(esc).join(", ")}</div>` : ""}
+    </div>
 
     <button class="dash-card" data-go="shopping" data-sub="list">
       <div class="dash-head"><span>🛒 Shopping List</span><span class="chev">›</span></div>
@@ -90,6 +106,21 @@ export function renderHome() {
       const sub = btn.getAttribute("data-sub");
       if (sub) { const b = document.querySelector(`[data-shopsub="${sub}"]`); if (b) b.click(); }
     }));
+
+  const setDay = (n) => { homeMealOffset = Math.max(-1, Math.min(14, n)); renderHome(); };
+  el.querySelectorAll("[data-dayoff]").forEach((b) =>
+    b.addEventListener("click", () => setDay(homeMealOffset + (+b.dataset.dayoff))));
+  const card = el.querySelector(".hm-meal-card");
+  if (card) {
+    let x0 = null;
+    card.addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+    card.addEventListener("touchend", (e) => {
+      if (x0 == null) return;
+      const dx = e.changedTouches[0].clientX - x0; x0 = null;
+      if (Math.abs(dx) < 45) return;
+      setDay(homeMealOffset + (dx < 0 ? 1 : -1));   // swipe left → next day, right → previous
+    }, { passive: true });
+  }
 }
 
 function moduleCard(key, emoji, label) {

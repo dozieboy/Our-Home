@@ -59,6 +59,16 @@ async function setQty(id) {
   if (error) { toast("Couldn't update"); await reload(); }
 }
 const stockLabel = (s) => s.qty_g != null ? `${s.qty_g}${s.unit === "ea" ? " EA" : " g"}` : "";
+const stepFor = (s) => (s.unit === "ea" ? 1 : 50);   // +/- step: 1 per piece, 50 g
+
+async function adjustQty(id, dir) {
+  const s = staples.find((x) => x.id === id);
+  if (!s || s.qty_g == null) return;
+  const next = Math.max(0, Number(s.qty_g) + dir * stepFor(s));
+  s.qty_g = next; render();   // optimistic
+  const { error } = await supabase.from("staples").update({ qty_g: next }).eq("id", id);
+  if (error) { toast("Couldn't update"); await reload(); }
+}
 
 // All stock item names (for ingredient autocomplete in Meals)
 export function getStockNames() { return staples.map((s) => (s.name || "").trim()).filter(Boolean); }
@@ -143,7 +153,13 @@ function render() {
     const rows = items.map((s) => `
       <li class="item staple ${s.in_stock ? "" : "out"}">
         <div class="body"><div class="name">${esc(s.name)}</div>${s.qty_g != null ? `<div class="meta">${stockLabel(s)} in stock</div>` : ""}</div>
-        <button class="g-pill" data-setg="${s.id}">${s.qty_g != null ? stockLabel(s) : "⚖️"}</button>
+        ${s.qty_g != null
+          ? `<div class="qty-step">
+               <button class="qbtn" data-qadj="${s.id}" data-d="-1" aria-label="less">−</button>
+               <button class="g-pill" data-setg="${s.id}">${stockLabel(s)}</button>
+               <button class="qbtn" data-qadj="${s.id}" data-d="1" aria-label="more">+</button>
+             </div>`
+          : `<button class="g-pill" data-setg="${s.id}">⚖️</button>`}
         <button class="stock-pill ${s.in_stock ? "in" : "out"}" data-toggle="${s.id}" data-next="${s.in_stock ? 0 : 1}">${s.in_stock ? "✅ Have" : "❌ Out"}</button>
         <button class="del" data-del="${s.id}">🗑</button>
       </li>`).join("");
@@ -196,6 +212,8 @@ function render() {
   });
   el.querySelectorAll("[data-setg]").forEach((b) =>
     b.addEventListener("click", () => setQty(b.dataset.setg)));
+  el.querySelectorAll("[data-qadj]").forEach((b) =>
+    b.addEventListener("click", () => adjustQty(b.dataset.qadj, +b.dataset.d)));
   const all = $("restock-all");
   if (all) all.addEventListener("click", addAllOutToShopping);
   el.querySelectorAll("[data-toggle]").forEach((b) =>
