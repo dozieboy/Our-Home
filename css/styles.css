@@ -325,7 +325,6 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 .kind-seg-row { display: flex; gap: 8px; margin-bottom: 14px; }
 .kind-seg { flex: 1; padding: 10px; border: 1px solid var(--border); background: var(--bg); border-radius: 12px; font-family: inherit; font-size: 14px; color: var(--muted); cursor: pointer; }
 .kind-seg.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
-.kind-badge.rest { background: #fef3c7; color: #92400e; border-radius: 999px; padding: 4px 9px; font-size: 13px; white-space: nowrap; }
 .search-box { width: 100%; margin: 10px 0; padding: 11px 14px; font-size: 15px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--text); font-family: inherit; }
 .recipe-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .rfilter { border: 1px solid var(--border); background: var(--card); color: var(--muted); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-family: inherit; cursor: pointer; white-space: nowrap; }

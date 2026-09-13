@@ -7,7 +7,7 @@ import { getHasKids } from "./settings.js";
 const $ = (id) => document.getElementById(id);
 
 const BASE_SLOTS = [
-  { key: "breakfast", label: "Breakfast", emoji: "🌅" },
+  { key: "breakfast", label: "Breakfast", emoji: "🍳" },
   { key: "lunch", label: "Lunch", emoji: "☀️" },
   { key: "dinner", label: "Dinner", emoji: "🌙" },
 ];
@@ -20,10 +20,10 @@ const KID_SLOTS = [
 const ALL_SLOTS = [...BASE_SLOTS, ...KID_SLOTS, { key: "kid", label: "Kid meal", emoji: "👶🏻" }];
 // Visible slots depend on whether the household has kids
 function slots() { return getHasKids() ? [...BASE_SLOTS, ...KID_SLOTS] : [...BASE_SLOTS]; }
-// Meal-tag emojis for a dish (🌅/☀️/🌙); the side badge shows these (or 🍽️ for restaurants)
+// Meal-tag emojis for a dish (🍳/☀️/🌙); the side badge shows these (or 🍽️ for restaurants)
 const tagBadges = (d) => (d.meal_tags || []).map((k) => (BASE_SLOTS.find((s) => s.key === k) || {}).emoji || "").join("");
 function sideBadge(d) {
-  if (d.kind === "restaurant") return `<span class="kind-badge rest">🍽️</span>`;
+  if (d.kind === "restaurant") return `<span class="meal-badge">🍽️</span>`;
   const t = tagBadges(d);
   return t ? `<span class="meal-badge">${t}</span>` : "";
 }
