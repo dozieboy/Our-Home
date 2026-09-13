@@ -273,6 +273,8 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 .sheet-close { background: var(--bg); border: none; width: 32px; height: 32px; border-radius: 8px; font-size: 16px; cursor: pointer; color: var(--text); }
 
 .picker-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.picker-head { font-size: 12px; font-weight: 700; color: var(--muted); margin: 10px 2px 0; }
+.picker-head:first-child { margin-top: 0; }
 .picker-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px; border: 1px solid var(--border); background: var(--bg); border-radius: 12px; font-family: inherit; font-size: 15px; color: var(--text); cursor: pointer; }
 
 .dish-form label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 12px; }

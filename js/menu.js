@@ -416,6 +416,7 @@ function openDishPicker(slot) {
   const slotTag = ["breakfast", "lunch", "dinner"].includes(base) ? base : null;
   const wrap = document.createElement("div");
   let search = null, showAll = null;
+  const slotObj = BASE_SLOTS.find((s) => s.key === base);
   if (dishes.length) {
     search = document.createElement("input");
     search.type = "search";
@@ -432,40 +433,28 @@ function openDishPicker(slot) {
   } else {
     wrap.innerHTML = `<p class="muted">No recipes yet — create one first.</p>`;
   }
-  const list = document.createElement("div");
-  list.className = "picker-list";
-  const items = [];
-  dishes.forEach((d) => {
-    const b = document.createElement("button");
-    b.className = "picker-item";
-    b.dataset.rn = d.name.toLowerCase();
-    b.dataset.tags = (d.meal_tags || []).join(" ");
-    b.innerHTML = `<span>${esc(d.name)}</span>${sideBadge(d)}`;
-    b.addEventListener("click", () => assignDish(slot, d.id));
-    list.appendChild(b);
-    items.push(b);
-  });
-  wrap.appendChild(list);
-  const none = document.createElement("p");
-  none.className = "empty"; none.hidden = true;
-  wrap.appendChild(none);
-  const apply = () => {
-    const q = (search?.value || "").trim().toLowerCase();
+  const listWrap = document.createElement("div");
+  listWrap.className = "picker-list";
+  wrap.appendChild(listWrap);
+  const itemHtml = (d) => `<button type="button" class="picker-item" data-pick="${d.id}"><span>${esc(d.name)}</span>${sideBadge(d)}</button>`;
+  const section = (title, arr) => arr.length ? `<div class="picker-head">${title}</div>${arr.map(itemHtml).join("")}` : "";
+  const renderList = () => {
+    const q = norm(search?.value || "");
+    const mq = (d) => !q || norm(d.name).includes(q);
     const all = showAll?.checked;
-    let shown = 0;
-    items.forEach((b) => {
-      const tags = b.dataset.tags ? b.dataset.tags.split(" ") : [];
-      const okSlot = !slotTag || all || tags.includes(slotTag);  // strict: only recipes tagged for this meal (untagged → tick "Show all")
-      const okQ = !q || b.dataset.rn.includes(q);
-      const hit = okSlot && okQ;
-      b.hidden = !hit; if (hit) shown++;
-    });
-    none.hidden = shown > 0;
-    none.textContent = shown === 0 ? "No matching recipe — tick “Show all” or create one" : "";
+    // Group: this meal's cook recipes first, then restaurants (eat out), then the rest (Show all)
+    const mealCook = dishes.filter((d) => d.kind !== "restaurant" && (!slotTag || (d.meal_tags || []).includes(slotTag)) && mq(d));
+    const restaurants = dishes.filter((d) => d.kind === "restaurant" && mq(d));
+    const others = dishes.filter((d) => d.kind !== "restaurant" && slotTag && !(d.meal_tags || []).includes(slotTag) && mq(d));
+    let html = section(slotObj ? `${slotObj.emoji} ${slotObj.label}` : "🍳 Recipes", mealCook)
+      + section("🍽️ Eat out", restaurants);
+    if (all) html += section("Other recipes", others);
+    listWrap.innerHTML = html || `<p class="empty">No matching recipe — tick “Show all” or create one</p>`;
+    listWrap.querySelectorAll("[data-pick]").forEach((b) => b.addEventListener("click", () => assignDish(slot, b.dataset.pick)));
   };
-  if (search) search.addEventListener("input", apply);
-  if (showAll) showAll.addEventListener("change", apply);
-  if (dishes.length) apply();
+  if (search) search.addEventListener("input", renderList);
+  if (showAll) showAll.addEventListener("change", renderList);
+  if (dishes.length) renderList();
   const newBtn = document.createElement("button");
   newBtn.className = "btn-primary full";
   newBtn.textContent = "＋ Create new recipe";
