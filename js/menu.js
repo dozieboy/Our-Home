@@ -543,10 +543,11 @@ function openDishForm(dishId) {
   applyKind();
 
   // Ingredient suggestions dropdown — stock items first, then names used before.
-  let suggestBox = null;
+  let suggestBox = null, hideTimer = null;
   const hideSuggest = () => { if (suggestBox) { suggestBox.remove(); suggestBox = null; } };
   const stockTag = (s) => s.in_stock ? (s.qty_g != null ? `${s.qty_g}${s.unit === "ea" ? " EA" : " g"}` : "have") : "out";
   function showSuggest(input) {
+    if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }   // cancel a pending hide (row-to-row focus)
     const q = norm(input.value);
     const sMatch = stockList.filter((s) => !q || norm(s.name).includes(q))
       .sort((a, b) => (b.in_stock ? 1 : 0) - (a.in_stock ? 1 : 0) || a.name.localeCompare(b.name)).slice(0, 6);
@@ -578,7 +579,7 @@ function openDishForm(dishId) {
     const nm = row.querySelector(".ing-name");
     nm.addEventListener("input", () => showSuggest(nm));
     nm.addEventListener("focus", () => showSuggest(nm));
-    nm.addEventListener("blur", () => setTimeout(hideSuggest, 150));
+    nm.addEventListener("blur", () => { hideTimer = setTimeout(hideSuggest, 200); });
     nm.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {   // Enter → jump to a fresh ingredient row
         e.preventDefault();
