@@ -455,7 +455,7 @@ function openDishPicker(slot) {
     let shown = 0;
     items.forEach((b) => {
       const tags = b.dataset.tags ? b.dataset.tags.split(" ") : [];
-      const okSlot = !slotTag || all || tags.length === 0 || tags.includes(slotTag);  // untagged shows everywhere
+      const okSlot = !slotTag || all || tags.includes(slotTag);  // strict: only recipes tagged for this meal (untagged → tick "Show all")
       const okQ = !q || b.dataset.rn.includes(q);
       const hit = okSlot && okQ;
       b.hidden = !hit; if (hit) shown++;
