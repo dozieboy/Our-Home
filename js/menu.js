@@ -1,7 +1,7 @@
 import { supabase } from "./supabase.js";
 import { toast, whoami } from "./app.js";
 import { openSheet, closeSheet, esc } from "./ui.js";
-import { getStockByName, getStockNames } from "./staples.js";
+import { getStockByName, getStockNames, getStockList } from "./staples.js";
 import { getHasKids } from "./settings.js";
 
 const $ = (id) => document.getElementById(id);
@@ -497,13 +497,13 @@ async function removePlan(id) {
 // ── Add / edit recipe form ──────────────────────────
 function openDishForm(dishId) {
   const d = dishId ? dishFor(dishId) : null;
-  // Autocomplete suggestions: ingredient names used before + stock item names.
-  // Dedupe by normalized key so "Tuna can" / "Tuna Can" collapse to one suggestion.
-  const seenNames = new Map();
-  [...dishes.flatMap((x) => (x.ingredients || []).map((i) => (i.name || "").trim())), ...getStockNames()]
-    .forEach((n) => { const t = (n || "").trim(); if (t && !seenNames.has(norm(t))) seenNames.set(norm(t), t); });
-  const known = [...seenNames.values()].sort((a, b) => a.localeCompare(b));
-  const ingOptions = known.map((n) => `<option value="${esc(n)}"></option>`).join("");
+  // Ingredient picker data: stock items first (with status), then names used before.
+  const stockList = getStockList();                         // [{name,in_stock,qty_g,unit}]
+  const stockKeys = new Set(stockList.map((s) => norm(s.name)));
+  const usedBefore = new Map();                             // ingredient names not in stock
+  dishes.flatMap((x) => (x.ingredients || []).map((i) => (i.name || "").trim()))
+    .forEach((n) => { if (n && !stockKeys.has(norm(n)) && !usedBefore.has(norm(n))) usedBefore.set(norm(n), n); });
+  const otherKnown = [...usedBefore.values()].sort((a, b) => a.localeCompare(b));
   const form = document.createElement("div");
   form.className = "dish-form";
   form.innerHTML = `
@@ -524,8 +524,7 @@ function openDishForm(dishId) {
           <option value="hard">Hard</option>
         </select>
       </label>
-      <div class="df-ing-label">Ingredients <span class="muted">(tick 🧊 if frozen and needs defrosting)</span></div>
-      <datalist id="ing-names">${ingOptions}</datalist>
+      <div class="df-ing-label">Ingredients <span class="muted">(pick from stock, or type a new one)</span></div>
       <div id="df-ings"></div>
       <button type="button" class="link-btn" id="df-add-ing">＋ Add ingredient</button>
       <label>Steps <span class="muted">(one per line)</span>
@@ -553,22 +552,47 @@ function openDishForm(dishId) {
     b.addEventListener("click", () => { kind = b.dataset.kind; applyKind(); }));
   applyKind();
 
+  // Ingredient suggestions dropdown — stock items first, then names used before.
+  let suggestBox = null;
+  const hideSuggest = () => { if (suggestBox) { suggestBox.remove(); suggestBox = null; } };
+  const stockTag = (s) => s.in_stock ? (s.qty_g != null ? `${s.qty_g}${s.unit === "ea" ? " EA" : " g"}` : "have") : "out";
+  function showSuggest(input) {
+    const q = norm(input.value);
+    const sMatch = stockList.filter((s) => !q || norm(s.name).includes(q))
+      .sort((a, b) => (b.in_stock ? 1 : 0) - (a.in_stock ? 1 : 0) || a.name.localeCompare(b.name)).slice(0, 6);
+    const oMatch = otherKnown.filter((n) => !q || norm(n).includes(q)).slice(0, 4);
+    if (!sMatch.length && !oMatch.length) { hideSuggest(); return; }
+    if (!suggestBox) { suggestBox = document.createElement("div"); suggestBox.className = "ing-suggest"; }
+    suggestBox.innerHTML =
+      (sMatch.length ? `<div class="isg-head">📦 In stock</div>` : "") +
+      sMatch.map((s) => `<button type="button" class="isg-item" data-name="${esc(s.name)}"><span>${esc(s.name)}</span><span class="isg-tag ${s.in_stock ? "on" : "off"}">${stockTag(s)}</span></button>`).join("") +
+      (oMatch.length ? `<div class="isg-head">Used before</div>` : "") +
+      oMatch.map((n) => `<button type="button" class="isg-item" data-name="${esc(n)}"><span>${esc(n)}</span></button>`).join("");
+    input.closest(".ing-row").insertAdjacentElement("afterend", suggestBox);
+    suggestBox.querySelectorAll(".isg-item").forEach((b) =>
+      b.addEventListener("mousedown", (e) => { e.preventDefault(); input.value = b.dataset.name; hideSuggest(); input.focus(); }));
+  }
+
   const ingBox = form.querySelector("#df-ings");
   const addIngRow = (name = "", defrost = false, qty = "", unit = "g") => {
     const row = document.createElement("div");
     row.className = "ing-row";
     row.innerHTML = `
-      <input type="text" class="ing-name" list="ing-names" placeholder="Ingredient" value="${esc(name)}">
+      <input type="text" class="ing-name" autocomplete="off" placeholder="Ingredient" value="${esc(name)}">
       <input type="number" class="ing-g" placeholder="qty" min="0" inputmode="decimal" value="${qty != null ? qty : ""}">
       <select class="ing-unit"><option value="g">g</option><option value="ea">EA</option></select>
       <label class="ing-frost"><input type="checkbox" class="ing-defrost" ${defrost ? "checked" : ""}> 🧊</label>
       <button type="button" class="ing-del">✕</button>`;
     row.querySelector(".ing-unit").value = unit === "ea" ? "ea" : "g";
-    row.querySelector(".ing-del").addEventListener("click", () => row.remove());
+    row.querySelector(".ing-del").addEventListener("click", () => { hideSuggest(); row.remove(); });
     const nm = row.querySelector(".ing-name");
+    nm.addEventListener("input", () => showSuggest(nm));
+    nm.addEventListener("focus", () => showSuggest(nm));
+    nm.addEventListener("blur", () => setTimeout(hideSuggest, 150));
     nm.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {   // Enter → jump to a fresh ingredient row
         e.preventDefault();
+        hideSuggest();
         if (nm.value.trim()) { const r = addIngRow(); r.querySelector(".ing-name").focus(); }
       }
     });
