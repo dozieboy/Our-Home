@@ -1,6 +1,6 @@
 // Service worker — network-first สำหรับไฟล์แอป (ออนไลน์ได้ของใหม่เสมอ),
 // ใช้แคชเป็น fallback ตอนออฟไลน์
-const CACHE = "baanrao-v45";
+const CACHE = "baanrao-v46";
 const SHELL = [
   "./",
   "./index.html",
@@ -19,8 +19,8 @@ const SHELL = [
   "./js/supabase.js",
   "./js/config.js",
   "./manifest.webmanifest",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
+  "./icons/icon-192-v4.png",
+  "./icons/icon-512-v4.png",
 ];
 
 self.addEventListener("install", (e) => {

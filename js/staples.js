@@ -74,6 +74,10 @@ async function adjustQty(id, dir) {
 
 // All stock item names (for ingredient autocomplete in Meals)
 export function getStockNames() { return staples.map((s) => (s.name || "").trim()).filter(Boolean); }
+// Full stock list with status (for the "in stock first" ingredient picker)
+export function getStockList() {
+  return staples.map((s) => ({ name: (s.name || "").trim(), in_stock: !!s.in_stock, qty_g: s.qty_g, unit: s.unit })).filter((s) => s.name);
+}
 
 async function renameStaple(id) {
   const s = staples.find((x) => x.id === id);
