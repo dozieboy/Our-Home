@@ -20,11 +20,13 @@ const KID_SLOTS = [
 const ALL_SLOTS = [...BASE_SLOTS, ...KID_SLOTS, { key: "kid", label: "Kid meal", emoji: "👶🏻" }];
 // Visible slots depend on whether the household has kids
 function slots() { return getHasKids() ? [...BASE_SLOTS, ...KID_SLOTS] : [...BASE_SLOTS]; }
-const DIFF = {
-  easy:   { label: "Easy", cls: "d-easy" },
-  medium: { label: "Medium", cls: "d-medium" },
-  hard:   { label: "Hard", cls: "d-hard" },
-};
+// Meal-tag emojis for a dish (🌅/☀️/🌙); the side badge shows these (or 🍽️ for restaurants)
+const tagBadges = (d) => (d.meal_tags || []).map((k) => (BASE_SLOTS.find((s) => s.key === k) || {}).emoji || "").join("");
+function sideBadge(d) {
+  if (d.kind === "restaurant") return `<span class="kind-badge rest">🍽️</span>`;
+  const t = tagBadges(d);
+  return t ? `<span class="meal-badge">${t}</span>` : "";
+}
 
 let dishes = [];        // {id,name,difficulty,ingredients:[{name,defrost}],steps}
 let plan = [];          // {id,plan_date,slot,dish_id}
@@ -145,10 +147,9 @@ function renderToday() {
     const rows = entries.map((p) => {
       const d = dishFor(p.dish_id);
       if (!d) return "";
-      const diff = DIFF[d.difficulty] || DIFF.easy;
       return `<div class="slot-dish">
         <span class="sd-name" data-gotodish="${d.id}" role="button" tabindex="0">${esc(d.name)} <span class="sd-go">›</span></span>
-        ${d.kind === "restaurant" ? `<span class="kind-badge rest">🍽️</span>` : `<span class="diff ${diff.cls}">${diff.label}</span>`}
+        ${sideBadge(d)}
         <button class="sd-del" data-delplan="${p.id}">✕</button>
       </div>`;
     }).join("") || `<div class="slot-empty muted">No meal yet</div>`;
@@ -218,19 +219,17 @@ function renderRecipes() {
   const body = $("menu-body");
   const list = dishes.map((d) => {
     const isRest = d.kind === "restaurant";
-    const diff = DIFF[d.difficulty] || DIFF.easy;
     const nIng = (d.ingredients || []).length;
     const open = expandedDish === d.id;
     const steps = (d.steps || "").split("\n").map((s) => s.trim()).filter(Boolean);
     const tags = d.meal_tags || [];
-    const tagStr = tags.map((k) => (BASE_SLOTS.find((s) => s.key === k)?.emoji || "")).join("");
     return `<div class="recipe ${open ? "open" : ""}" data-rn="${esc(d.name.toLowerCase())}" data-tags="${esc(tags.join(" "))}">
       <div class="recipe-head" data-expand="${d.id}">
         <div>
-          <div class="recipe-name">${esc(d.name)}${tagStr ? ` <span class="recipe-tags">${tagStr}</span>` : ""}</div>
+          <div class="recipe-name">${esc(d.name)}</div>
           <div class="recipe-sub muted">${isRest ? "🍽️ Restaurant · bought" : `🍳 Cook · ${nIng} ingredient(s)`}</div>
         </div>
-        ${isRest ? `<span class="kind-badge rest">🍽️</span>` : `<span class="diff ${diff.cls}">${diff.label}</span>`}
+        ${sideBadge(d)}
       </div>
       ${open ? `
         <div class="recipe-body">
@@ -437,12 +436,11 @@ function openDishPicker(slot) {
   list.className = "picker-list";
   const items = [];
   dishes.forEach((d) => {
-    const diff = DIFF[d.difficulty] || DIFF.easy;
     const b = document.createElement("button");
     b.className = "picker-item";
     b.dataset.rn = d.name.toLowerCase();
     b.dataset.tags = (d.meal_tags || []).join(" ");
-    b.innerHTML = `<span>${esc(d.name)}</span>${d.kind === "restaurant" ? `<span class="kind-badge rest">🍽️</span>` : `<span class="diff ${diff.cls}">${diff.label}</span>`}`;
+    b.innerHTML = `<span>${esc(d.name)}</span>${sideBadge(d)}`;
     b.addEventListener("click", () => assignDish(slot, d.id));
     list.appendChild(b);
     items.push(b);
@@ -517,13 +515,6 @@ function openDishForm(dishId) {
       ${BASE_SLOTS.map((s) => `<label class="tag-check"><input type="checkbox" class="mt-check" value="${s.key}"> ${s.emoji} ${s.label}</label>`).join("")}
     </div>
     <div id="cook-fields">
-      <label>Difficulty
-        <select id="df-diff">
-          <option value="easy">Easy</option>
-          <option value="medium">Medium</option>
-          <option value="hard">Hard</option>
-        </select>
-      </label>
       <div class="df-ing-label">Ingredients <span class="muted">(pick from stock, or type a new one)</span></div>
       <div id="df-ings"></div>
       <button type="button" class="link-btn" id="df-add-ing">＋ Add ingredient</button>
@@ -536,7 +527,6 @@ function openDishForm(dishId) {
     <button type="button" class="btn-primary full" id="df-save">${d ? "Save changes" : "Save recipe"}</button>`;
 
   openSheet(d ? "Edit recipe" : "Add recipe", form);
-  form.querySelector("#df-diff").value = d ? d.difficulty : "easy";
   const savedTags = (d && d.meal_tags) || [];
   form.querySelectorAll(".mt-check").forEach((c) => { c.checked = savedTags.includes(c.value); });
 
@@ -612,7 +602,6 @@ async function saveDish(dishId, form) {
   const name = form.querySelector("#df-name").value.trim();
   if (!name) { toast("Enter a dish name first"); return; }
   const kind = form.dataset.kind === "restaurant" ? "restaurant" : "cook";
-  const difficulty = form.querySelector("#df-diff").value;
   const source_url = form.querySelector("#df-url").value.trim();
   let steps = form.querySelector("#df-steps").value.trim();
   let ingredients = [...form.querySelectorAll(".ing-row")].map((r) => {
@@ -627,7 +616,7 @@ async function saveDish(dishId, form) {
   if (kind === "restaurant") { ingredients = []; steps = ""; }   // bought — no cooking data
   const meal_tags = [...form.querySelectorAll(".mt-check:checked")].map((c) => c.value);
 
-  const payload = { name, kind, difficulty, steps: steps || null, ingredients, source_url: source_url || null, meal_tags };
+  const payload = { name, kind, steps: steps || null, ingredients, source_url: source_url || null, meal_tags };
   let error;
   if (dishId) {
     ({ error } = await supabase.from("dishes").update(payload).eq("id", dishId));
