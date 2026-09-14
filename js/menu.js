@@ -245,10 +245,14 @@ function renderRecipes() {
             ${d.source_url ? `<a class="recipe-link" href="${esc(d.source_url)}" target="_blank" rel="noopener">🔗 Open link (map / delivery / menu)</a>`
               : `<div class="muted">Bought / eat out — no ingredients needed 🍽️</div>`}
           ` : `
-            ${nIng ? `<div class="rb-label">Ingredients</div><div class="tag-list">${
+            <div class="rb-label">Ingredients</div>
+            ${nIng ? `<div class="tag-list">${
               d.ingredients.map((i) => { const { qty, unit } = ingQty(i); return `<span class="tag ${i.defrost ? "frozen" : ""}">${i.defrost ? "🧊 " : ""}${esc(i.name)}${qty ? ` · ${qtyTag(qty, unit)}` : ""}</span>`; }).join("")
-            }</div>` : ""}
-            ${steps.length ? `<div class="rb-label">Steps</div><ol class="steps">${steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}
+            }</div>`
+              : `<button class="rb-empty" data-editdish="${d.id}">＋ Add ingredients</button>`}
+            <div class="rb-label">Steps</div>
+            ${steps.length ? `<ol class="steps">${steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>`
+              : `<button class="rb-empty" data-editdish="${d.id}">＋ Add steps</button>`}
             ${d.source_url ? `<a class="recipe-link" href="${esc(d.source_url)}" target="_blank" rel="noopener">🔗 View source recipe</a>` : ""}
             ${nIng ? `<button class="link-btn restock-btn" data-restock="${d.id}">🛒 Check stock → add missing to list</button>` : ""}
           `}
