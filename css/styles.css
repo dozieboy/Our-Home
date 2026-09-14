@@ -116,6 +116,10 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 .category { margin-bottom: 18px; }
 .category-head { display: flex; align-items: center; gap: 8px; margin: 0 4px 8px; font-size: 15px; font-weight: 700; }
 .category-head .count { color: var(--muted); font-weight: 500; font-size: 13px; }
+.category-head[role="button"] { cursor: pointer; }
+.cat-caret { margin-left: auto; color: var(--muted); font-size: 12px; transition: transform .15s; }
+.category.collapsed .cat-caret { transform: rotate(-90deg); }
+.category.collapsed .item-list { display: none; }
 .cat-food .dot { background: var(--food); }
 .cat-dry .dot { background: var(--dry); }
 .cat-ingredient .dot { background: var(--ingredient); }

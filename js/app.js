@@ -12,7 +12,7 @@ const $ = (id) => document.getElementById(id);
 // ── Modules (bottom tabs) ────────────────────────────
 const TABS = [
   { key: "home", label: "Home", emoji: "🏠" },
-  { key: "shopping", label: "Shopping", emoji: "🛒" },
+  { key: "shopping", label: "Shopping", emoji: "🛒", hidden: true },   // reachable from Home, not shown in the bottom bar
   { key: "menu", label: "Meals", emoji: "🍳" },
   { key: "stock", label: "Stock", emoji: "📦" },
   { key: "recipes", label: "Recipes", emoji: "📖" },
@@ -72,6 +72,7 @@ function buildTabbar() {
   const nav = $("tabbar");
   nav.innerHTML = "";
   for (const t of TABS) {
+    if (t.hidden) continue;   // routable but not a bottom-bar button
     const b = document.createElement("button");
     b.className = "tab";
     b.dataset.key = t.key;

@@ -13,6 +13,7 @@ const CATEGORIES = [
 
 let items = [];          // in-memory state
 let channel = null;      // realtime subscription
+let collapsed = new Set(); // category groups collapsed in the dropdown view
 
 const $ = (id) => document.getElementById(id);
 
@@ -192,12 +193,14 @@ function render() {
     total += catItems.length;
 
     const remaining = catItems.filter((i) => !i.checked).length;
+    const isCollapsed = collapsed.has(cat.key);
     const section = document.createElement("div");
-    section.className = `category cat-${cat.key}`;
+    section.className = `category cat-${cat.key}` + (isCollapsed ? " collapsed" : "");
     section.innerHTML = `
-      <div class="category-head">
+      <div class="category-head" data-cat="${cat.key}" role="button" tabindex="0" aria-expanded="${!isCollapsed}">
         <span class="dot"></span>${cat.emoji} ${cat.label}
         <span class="count">(${remaining}/${catItems.length} left)</span>
+        <span class="cat-caret">▾</span>
       </div>
       <ul class="item-list"></ul>`;
     const ul = section.querySelector(".item-list");
@@ -225,6 +228,13 @@ function render() {
     }
     container.appendChild(section);
   }
+
+  container.querySelectorAll("[data-cat]").forEach((h) =>
+    h.addEventListener("click", () => {
+      const k = h.dataset.cat;
+      if (collapsed.has(k)) collapsed.delete(k); else collapsed.add(k);
+      render();
+    }));
 
   $("empty-state").hidden = total > 0;
   document.dispatchEvent(new CustomEvent("shopping-changed"));
