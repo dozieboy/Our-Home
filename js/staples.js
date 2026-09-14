@@ -256,6 +256,11 @@ function render() {
     $("staple-g").value = "";
     $("staple-name").focus();
   });
+  // Default unit by category: Fresh food → g, everything else → sz
+  const catSel = $("staple-cat"), unitSel = $("staple-unit");
+  const syncUnitDefault = () => { unitSel.value = catSel.value === "food" ? "g" : "ea"; };
+  catSel.addEventListener("change", syncUnitDefault);
+  syncUnitDefault();
   el.querySelectorAll("[data-setg]").forEach((b) =>
     b.addEventListener("click", () => setQty(b.dataset.setg)));
   el.querySelectorAll("[data-qadj]").forEach((b) =>
