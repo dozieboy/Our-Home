@@ -239,6 +239,12 @@ function renderRecipes() {
     const open = expandedDish === d.id;
     const steps = (d.steps || "").split("\n").map((s) => s.trim()).filter(Boolean);
     const tags = d.meal_tags || [];
+    // Ingredients not currently in stock (for the red tags + a "Missing" summary line)
+    const missing = isRest ? [] : (d.ingredients || []).filter((i) => {
+      if (!i.name) return false;
+      const st = getStockByName(i.name);
+      return !st || !st.in_stock;
+    }).map((i) => i.name);
     return `<div class="recipe ${open ? "open" : ""}" data-rn="${esc(d.name.toLowerCase())}" data-tags="${esc(tags.join(" "))}" data-rest="${isRest ? 1 : 0}">
       <div class="recipe-head" data-expand="${d.id}">
         <div>
@@ -255,9 +261,15 @@ function renderRecipes() {
           ` : `
             <div class="rb-label">Ingredients</div>
             ${nIng ? `<div class="tag-list">${
-              d.ingredients.map((i) => { const { qty, unit } = ingQty(i); return `<span class="tag ${i.defrost ? "frozen" : ""}">${i.defrost ? "🧊 " : ""}${esc(i.name)}${qty ? ` · ${qtyTag(qty, unit)}` : ""}</span>`; }).join("")
+              d.ingredients.map((i) => {
+                const { qty, unit } = ingQty(i);
+                const st = getStockByName(i.name);
+                const out = !st || !st.in_stock;   // not in stock → highlight red
+                return `<span class="tag ${i.defrost ? "frozen" : ""} ${out ? "tag-out" : ""}">${i.defrost ? "🧊 " : ""}${esc(i.name)}${qty ? ` · ${qtyTag(qty, unit)}` : ""}</span>`;
+              }).join("")
             }</div>`
               : `<button class="rb-empty" data-editdish="${d.id}">＋ Add ingredients</button>`}
+            ${missing.length ? `<div class="rb-missing">🔴 Missing: ${missing.map(esc).join(", ")}</div>` : ""}
             <div class="rb-label">Steps</div>
             ${steps.length ? `<ol class="steps">${steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>`
               : `<button class="rb-empty" data-editdish="${d.id}">＋ Add steps</button>`}
@@ -667,6 +679,12 @@ export function renderMenu() { render(); }
 document.addEventListener("settings-changed", () => {
   const el = $("screen-menu");
   if (el && !el.hidden) render();
+});
+
+// Stock changed → refresh the Recipes screen so out-of-stock highlights stay current
+document.addEventListener("staples-changed", () => {
+  const rec = $("screen-recipes");
+  if (rec && !rec.hidden) renderRecipesScreen();
 });
 
 export async function initMenu() {
