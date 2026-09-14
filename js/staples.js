@@ -92,6 +92,18 @@ async function renameStaple(id) {
   if (error) { toast("Couldn't rename"); await reload(); }
 }
 
+// Move a stock item to another category (Fresh food / Dry food / …)
+async function changeStapleCategory(id, category) {
+  const s = staples.find((x) => x.id === id);
+  if (!s || s.category === category) return;
+  const old = s.category;
+  s.category = category; render();   // optimistic → jumps to the new section
+  const { error } = await supabase.from("staples").update({ category }).eq("id", id);
+  if (error) { s.category = old; render(); toast("Couldn't update"); return; }
+  const c = CATS.find((x) => x.key === category);
+  toast(`→ ${c ? c.emoji + " " + c.label : category}`);
+}
+
 // Read stock level for a name (used by Meals to check ingredients)
 export function getStockByName(name) {
   const key = norm(name);
@@ -171,7 +183,13 @@ function render() {
     if (!items.length) return "";
     const rows = items.map((s) => `
       <li class="item staple ${s.in_stock ? "" : "out"}">
-        <div class="body"><div class="name staple-name" data-rename="${s.id}">${esc(s.name)} <span class="ren">✏️</span></div>${s.qty_g != null ? `<div class="meta">${stockLabel(s)} in stock</div>` : ""}</div>
+        <div class="body">
+          <div class="name staple-name" data-rename="${s.id}">${esc(s.name)} <span class="ren">✏️</span></div>
+          <div class="meta-row">
+            <select class="cat-mini" data-setcat="${s.id}" aria-label="category">${CATS.map((c) => `<option value="${c.key}" ${c.key === s.category ? "selected" : ""}>${c.emoji} ${c.label}</option>`).join("")}</select>
+            ${s.qty_g != null ? `<span class="meta">${stockLabel(s)} in stock</span>` : ""}
+          </div>
+        </div>
         ${s.qty_g != null
           ? `<div class="qty-step">
                <button class="qbtn" data-qadj="${s.id}" data-d="-1" aria-label="less">−</button>
@@ -237,6 +255,8 @@ function render() {
     b.addEventListener("click", () => adjustQty(b.dataset.qadj, +b.dataset.d)));
   el.querySelectorAll("[data-rename]").forEach((b) =>
     b.addEventListener("click", () => renameStaple(b.dataset.rename)));
+  el.querySelectorAll("[data-setcat]").forEach((sel) =>
+    sel.addEventListener("change", (e) => changeStapleCategory(sel.dataset.setcat, e.target.value)));
   const all = $("restock-all");
   if (all) all.addEventListener("click", addAllOutToShopping);
   el.querySelectorAll("[data-toggle]").forEach((b) =>
