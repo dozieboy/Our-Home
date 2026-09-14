@@ -34,7 +34,8 @@ export function renderHome() {
   const name = whoami();
 
   const catChips = [
-    { emoji: "🍎", label: "Food", n: s.byCat.food },
+    { emoji: "🥩", label: "Fresh", n: s.byCat.food },
+    { emoji: "🥫", label: "Dry", n: s.byCat.dry },
     { emoji: "🥕", label: "Ingredient", n: s.byCat.ingredient },
     { emoji: "🏠", label: "Household", n: s.byCat.household },
     { emoji: "💊", label: "Health", n: s.byCat.health },

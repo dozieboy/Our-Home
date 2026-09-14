@@ -61,10 +61,10 @@ function ingQty(i) {
   const q = i.qty != null ? i.qty : (i.grams != null ? i.grams : null);
   return { qty: q != null ? Number(q) : null, unit: i.unit === "ea" ? "ea" : "g" };
 }
-const unitLabel = (u) => (u === "ea" ? "EA" : "g");
+const unitLabel = (u) => (u === "ea" ? "sz" : "g");
 // Normalized key for name matching: trim, lowercase, drop all whitespace
 const norm = (s) => (s || "").trim().toLowerCase().replace(/\s+/g, "");
-const qtyTag = (qty, unit) => `${qty}${unit === "ea" ? " EA" : "g"}`;       // compact tag, e.g. 2 EA / 500g
+const qtyTag = (qty, unit) => `${qty}${unit === "ea" ? " sz" : "g"}`;       // compact tag, e.g. 2 sz / 500g
 const qtyStr = (qty, unit) => `${Math.round(Number(qty))} ${unitLabel(unit)}`; // shopping qty, e.g. 2 EA / 150 g
 
 // ── Load ────────────────────────────────────────────
@@ -545,7 +545,7 @@ function openDishForm(dishId) {
   // Ingredient suggestions dropdown — stock items first, then names used before.
   let suggestBox = null, hideTimer = null;
   const hideSuggest = () => { if (suggestBox) { suggestBox.remove(); suggestBox = null; } };
-  const stockTag = (s) => s.in_stock ? (s.qty_g != null ? `${s.qty_g}${s.unit === "ea" ? " EA" : " g"}` : "have") : "out";
+  const stockTag = (s) => s.in_stock ? (s.qty_g != null ? `${s.qty_g}${s.unit === "ea" ? " sz" : " g"}` : "have") : "out";
   function showSuggest(input) {
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }   // cancel a pending hide (row-to-row focus)
     const q = norm(input.value);
@@ -571,7 +571,7 @@ function openDishForm(dishId) {
     row.innerHTML = `
       <input type="text" class="ing-name" autocomplete="off" placeholder="Ingredient" value="${esc(name)}">
       <input type="number" class="ing-g" placeholder="qty" min="0" inputmode="decimal" value="${qty != null ? qty : ""}">
-      <select class="ing-unit"><option value="g">g</option><option value="ea">EA</option></select>
+      <select class="ing-unit"><option value="g">g</option><option value="ea">sz</option></select>
       <label class="ing-frost"><input type="checkbox" class="ing-defrost" ${defrost ? "checked" : ""}> 🧊</label>
       <button type="button" class="ing-del">✕</button>`;
     row.querySelector(".ing-unit").value = unit === "ea" ? "ea" : "g";

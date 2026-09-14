@@ -3,7 +3,8 @@ import { toast, whoami } from "./app.js";
 
 const $ = (id) => document.getElementById(id);
 const CATS = [
-  { key: "food", emoji: "🍎", label: "Food" },
+  { key: "food", emoji: "🥩", label: "Fresh food" },
+  { key: "dry", emoji: "🥫", label: "Dry food" },
   { key: "ingredient", emoji: "🥕", label: "Ingredient" },
   { key: "household", emoji: "🏠", label: "Household" },
   { key: "health", emoji: "💊", label: "Health" },
@@ -51,7 +52,7 @@ async function addStaple(name, category, qty, unit) {
 async function setQty(id) {
   const s = staples.find((x) => x.id === id);
   if (!s) return;
-  const label = (s.unit === "ea" ? "EA" : "g");
+  const label = (s.unit === "ea" ? "sz" : "g");
   const v = prompt(`Quantity in stock (${label}) — leave empty to clear:`, s.qty_g != null ? s.qty_g : "");
   if (v === null) return;
   const t = String(v).trim();
@@ -60,7 +61,7 @@ async function setQty(id) {
   const { error } = await supabase.from("staples").update({ qty_g: g }).eq("id", id);
   if (error) { toast("Couldn't update"); await reload(); }
 }
-const stockLabel = (s) => s.qty_g != null ? `${s.qty_g}${s.unit === "ea" ? " EA" : " g"}` : "";
+const stockLabel = (s) => s.qty_g != null ? `${s.qty_g}${s.unit === "ea" ? " sz" : " g"}` : "";
 const stepFor = (s) => (s.unit === "ea" ? 1 : 50);   // +/- step: 1 per piece, 50 g
 
 async function adjustQty(id, dir) {
@@ -191,13 +192,14 @@ function render() {
       <input type="text" id="staple-name" placeholder="Add a staple… (e.g. Dish soap)" required />
       <div class="add-row">
         <select id="staple-cat">
-          <option value="food">🍎 Food</option>
+          <option value="food">🥩 Fresh food</option>
+          <option value="dry">🥫 Dry food</option>
           <option value="ingredient">🥕 Ingredient</option>
           <option value="household">🏠 Household</option>
           <option value="health">💊 Health</option>
         </select>
         <input type="number" id="staple-g" class="staple-g" placeholder="qty" min="0" inputmode="decimal" />
-        <select id="staple-unit" class="staple-unit"><option value="g">g</option><option value="ea">EA</option></select>
+        <select id="staple-unit" class="staple-unit"><option value="g">g</option><option value="ea">sz</option></select>
         <button type="submit" class="btn-primary add-btn">＋ Add</button>
       </div>
     </form>

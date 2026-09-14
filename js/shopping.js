@@ -4,7 +4,8 @@ import { markInStockByNameCat } from "./staples.js";
 import { openSheet, closeSheet } from "./ui.js";
 
 const CATEGORIES = [
-  { key: "food", label: "Food", emoji: "🍎" },
+  { key: "food", label: "Fresh food", emoji: "🥩" },
+  { key: "dry", label: "Dry food", emoji: "🥫" },
   { key: "ingredient", label: "Ingredient", emoji: "🥕" },
   { key: "household", label: "Household", emoji: "🏠" },
   { key: "health", label: "Health", emoji: "💊" },
@@ -81,7 +82,8 @@ function openReceiptSheet() {
       <textarea id="rc-text" rows="8"></textarea></label>
     <label>Category
       <select id="rc-cat">
-        <option value="food">🍎 Food</option>
+        <option value="food">🥩 Fresh food</option>
+        <option value="dry">🥫 Dry food</option>
         <option value="ingredient">🥕 Ingredient</option>
         <option value="household">🏠 Household</option>
         <option value="health">💊 Health</option>
@@ -230,7 +232,7 @@ function render() {
 
 // Summary for Home dashboard
 export function getShoppingSummary() {
-  const byCat = { food: 0, ingredient: 0, household: 0, health: 0 };
+  const byCat = { food: 0, dry: 0, ingredient: 0, household: 0, health: 0 };
   let remaining = 0, done = 0;
   for (const it of items) {
     if (it.checked) { done++; } else { remaining++; if (byCat[it.category] != null) byCat[it.category]++; }
