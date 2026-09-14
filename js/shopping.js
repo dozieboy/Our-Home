@@ -227,6 +227,17 @@ function render() {
   document.dispatchEvent(new CustomEvent("shopping-changed"));
 }
 
+// Items grouped by category (only non-empty groups) — for the Home dropdown
+export function getShoppingGroups() {
+  return CATEGORIES.map((c) => ({
+    key: c.key, emoji: c.emoji, label: c.label,
+    items: items
+      .filter((i) => i.category === c.key)
+      .sort((a, b) => (a.checked ? 1 : 0) - (b.checked ? 1 : 0) || new Date(a.created_at) - new Date(b.created_at))
+      .map((i) => ({ id: i.id, name: i.name, checked: i.checked, qty: i.qty })),
+  })).filter((g) => g.items.length);
+}
+
 // Summary for Home dashboard
 export function getShoppingSummary() {
   const byCat = {};

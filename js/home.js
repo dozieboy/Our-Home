@@ -1,4 +1,4 @@
-import { getShoppingSummary } from "./shopping.js";
+import { getShoppingSummary, getShoppingGroups } from "./shopping.js";
 import { getStaplesSummary } from "./staples.js";
 import { getMenuSummaryFor, goToRecipe } from "./menu.js";
 import { getHomeName } from "./settings.js";
@@ -14,6 +14,8 @@ function todayText() {
 
 // Which day the Today's-meals card is showing (0 = today). Swipe/arrows change it.
 let homeMealOffset = 0;
+// Which shopping categories are expanded in the Home dropdown
+let shopOpen = new Set();
 const pad = (n) => String(n).padStart(2, "0");
 function offsetISO(n) { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
 function offsetLabel(n) {
@@ -33,13 +35,23 @@ export function renderHome() {
   const m = getMenuSummaryFor(offsetISO(homeMealOffset));
   const name = whoami();
 
-  const catChips = [
-    { emoji: "🥩", label: "Fresh", n: s.byCat.food },
-    { emoji: "🥫", label: "Dry", n: s.byCat.dry },
-    { emoji: "🥕", label: "Ingredient", n: s.byCat.ingredient },
-    { emoji: "🏠", label: "Household", n: s.byCat.household },
-    { emoji: "💊", label: "Health", n: s.byCat.health },
-  ].map((c) => `<span class="mini-chip">${c.emoji} ${c.label} <b>${c.n}</b></span>`).join("");
+  const groups = getShoppingGroups();
+  const shopGroupsHtml = groups.length
+    ? groups.map((g) => {
+        const open = shopOpen.has(g.key);
+        const left = g.items.filter((i) => !i.checked).length;
+        return `<div class="shop-group ${open ? "open" : ""}">
+          <button class="shop-group-head" data-shopcat="${g.key}">
+            <span class="dot" style="background:var(--${g.key})"></span>
+            <span class="sg-label">${g.emoji} ${esc(g.label)}</span>
+            <span class="count">${left}/${g.items.length}</span>
+            <span class="cat-caret">▾</span>
+          </button>
+          ${open ? `<ul class="shop-group-items">${g.items.map((i) =>
+            `<li class="${i.checked ? "done" : ""}">${esc(i.name)}${i.qty ? ` <span class="sg-qty">${esc(i.qty)}</span>` : ""}</li>`).join("")}</ul>` : ""}
+        </div>`;
+      }).join("")
+    : `<div class="muted sg-empty">Nothing to buy 🎉</div>`;
 
   const meals3 = m.slots.map((sl) => {
     const kid = (sl.key || "").startsWith("kid");
@@ -67,11 +79,11 @@ export function renderHome() {
       ${homeMealOffset === 0 && m.defrostTomorrow.length ? `<div class="hm-defrost">🧊 Tomorrow: take out ${m.defrostTomorrow.map(esc).join(", ")}</div>` : ""}
     </div>
 
-    <button class="dash-card" data-go="shopping">
-      <div class="dash-head"><span>🛒 Shopping List</span><span class="chev">›</span></div>
+    <div class="dash-card">
+      <button class="dash-head dash-head-btn" data-go="shopping"><span>🛒 Shopping List</span><span class="chev">›</span></button>
       <div class="dash-big"><b>${s.remaining}</b> item(s) to buy</div>
-      <div class="mini-chips">${catChips}</div>
-    </button>
+      <div class="shop-groups">${shopGroupsHtml}</div>
+    </div>
 
     <button class="dash-card" data-go="stock">
       <div class="dash-head"><span>📦 Stock</span><span class="chev">›</span></div>
@@ -84,6 +96,14 @@ export function renderHome() {
 
   el.querySelectorAll("[data-go]").forEach((btn) =>
     btn.addEventListener("click", () => setTab(btn.getAttribute("data-go"))));
+
+  // Shopping-list category dropdowns (expand to see items right on Home)
+  el.querySelectorAll("[data-shopcat]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const k = b.dataset.shopcat;
+      if (shopOpen.has(k)) shopOpen.delete(k); else shopOpen.add(k);
+      renderHome();
+    }));
 
   // Tap a meal cell → open that recipe (or the Meals tab if empty)
   el.querySelectorAll("[data-mealid]").forEach((c) =>

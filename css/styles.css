@@ -177,15 +177,29 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 .dash-card {
   display: block; width: 100%; text-align: left; color: var(--text);
   background: var(--card); border: none; border-radius: 18px; box-shadow: var(--shadow);
-  padding: 18px; margin-bottom: 16px; cursor: pointer; font-family: inherit;
+  padding: 18px; margin-bottom: 16px; cursor: default; font-family: inherit;
 }
+button.dash-card { cursor: pointer; }
 .dash-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 15px; }
+.dash-head-btn { width: 100%; background: transparent; border: none; padding: 0; color: var(--text); font-family: inherit; cursor: pointer; }
 .dash-head .chev { color: var(--muted); font-size: 22px; }
 .dash-big { font-size: 15px; margin-top: 10px; }
 .dash-big b { font-size: 34px; font-weight: 800; color: var(--primary); vertical-align: -2px; margin-right: 6px; }
 .mini-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .mini-chip { background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; }
 .mini-chip b { color: var(--primary); }
+/* Shopping-list dropdown on Home */
+.shop-groups { display: flex; flex-direction: column; margin-top: 8px; }
+.shop-group-head { display: flex; align-items: center; gap: 8px; width: 100%; background: transparent; border: none; border-top: 1px solid var(--border); padding: 9px 2px; font-size: 14px; font-weight: 600; color: var(--text); font-family: inherit; cursor: pointer; }
+.shop-group:first-child .shop-group-head { border-top: none; }
+.shop-group-head .count { color: var(--muted); font-weight: 500; font-size: 12px; }
+.shop-group-head .cat-caret { margin-left: auto; }
+.shop-group:not(.open) .cat-caret { transform: rotate(-90deg); }
+.shop-group-items { list-style: none; margin: 0 0 8px; padding: 0 2px 2px 26px; display: flex; flex-direction: column; gap: 6px; }
+.shop-group-items li { font-size: 14px; color: var(--text); display: flex; justify-content: space-between; gap: 8px; }
+.shop-group-items li.done { text-decoration: line-through; color: var(--muted); }
+.shop-group-items .sg-qty { color: var(--muted); font-size: 12px; }
+.sg-empty { margin-top: 10px; }
 .done-line { margin-top: 10px; font-size: 13px; }
 
 .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
