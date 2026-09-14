@@ -438,6 +438,15 @@ async function restockAddAll() {
   renderToday();
 }
 
+// Which cook recipes use an ingredient by (normalized) name — for Stock → Recipes links
+export function getRecipesUsingIngredient(name) {
+  const key = norm(name);
+  if (!key) return [];
+  return dishes
+    .filter((d) => d.kind !== "restaurant" && (d.ingredients || []).some((i) => norm(i.name) === key))
+    .map((d) => ({ id: d.id, name: d.name }));
+}
+
 // Jump from a planned meal straight to its recipe (Recipes tab, expanded)
 export function goToRecipe(dishId) {
   if (!dishFor(dishId)) return;

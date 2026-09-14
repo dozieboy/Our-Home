@@ -1,6 +1,8 @@
 import { supabase } from "./supabase.js";
 import { toast, whoami } from "./app.js";
 import { CATEGORIES as CATS, catLabel, catOptions } from "./categories.js";
+import { goToRecipe, getRecipesUsingIngredient } from "./menu.js";
+import { openSheet, closeSheet } from "./ui.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -104,6 +106,23 @@ async function changeStapleCategory(id, category) {
   toast(`→ ${c ? c.emoji + " " + c.label : category}`);
 }
 
+// Show which recipes use this stock item → tap one to open it
+function openRecipesForStaple(id) {
+  const s = staples.find((x) => x.id === id);
+  if (!s) return;
+  const recipes = getRecipesUsingIngredient(s.name);
+  if (!recipes.length) return;
+  if (recipes.length === 1) { goToRecipe(recipes[0].id); return; }   // only one → jump straight there
+  const wrap = document.createElement("div");
+  wrap.className = "used-in-sheet";
+  wrap.innerHTML = recipes
+    .map((r) => `<button type="button" class="used-in-item" data-openrec="${r.id}">📖 ${esc(r.name)}</button>`)
+    .join("");
+  wrap.querySelectorAll("[data-openrec]").forEach((b) =>
+    b.addEventListener("click", () => { closeSheet(); goToRecipe(b.dataset.openrec); }));
+  openSheet(`Recipes using ${s.name}`, wrap);
+}
+
 // Read stock level for a name (used by Meals to check ingredients)
 export function getStockByName(name) {
   const key = norm(name);
@@ -188,6 +207,7 @@ function render() {
           <div class="meta-row">
             <select class="cat-mini" data-setcat="${s.id}" aria-label="category">${catOptions(s.category)}</select>
             ${s.qty_g != null ? `<span class="meta">${stockLabel(s)} in stock</span>` : ""}
+            ${(() => { const n = getRecipesUsingIngredient(s.name).length; return n ? `<button class="used-in" data-usedin="${s.id}">🍳 ${n} recipe${n > 1 ? "s" : ""}</button>` : ""; })()}
           </div>
         </div>
         ${s.qty_g != null
@@ -256,6 +276,8 @@ function render() {
     b.addEventListener("click", () => renameStaple(b.dataset.rename)));
   el.querySelectorAll("[data-setcat]").forEach((sel) =>
     sel.addEventListener("change", (e) => changeStapleCategory(sel.dataset.setcat, e.target.value)));
+  el.querySelectorAll("[data-usedin]").forEach((b) =>
+    b.addEventListener("click", () => openRecipesForStaple(b.dataset.usedin)));
   const all = $("restock-all");
   if (all) all.addEventListener("click", addAllOutToShopping);
   el.querySelectorAll("[data-toggle]").forEach((b) =>
@@ -284,6 +306,12 @@ document.addEventListener("shopping-changed", async () => {
   if (!el || el.hidden) return;
   await refreshOnList();
   render();
+});
+
+// Recipes loaded/changed → refresh so each item's "used in N recipes" link is current
+document.addEventListener("menu-changed", () => {
+  const el = $("screen-stock");
+  if (el && !el.hidden) render();
 });
 
 export async function initStaples() {
