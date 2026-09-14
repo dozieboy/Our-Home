@@ -226,7 +226,14 @@ function renderToday() {
 function renderRecipes() {
   const body = $("recipes-body");
   if (!body) return;
-  const list = dishes.map((d) => {
+  // When restaurants are shown, list them first (each group stays alphabetical)
+  const ordered = showRestaurants
+    ? [...dishes].sort((a, b) => {
+        const ra = a.kind === "restaurant" ? 0 : 1, rb = b.kind === "restaurant" ? 0 : 1;
+        return ra - rb || (a.name || "").localeCompare(b.name || "");
+      })
+    : dishes;
+  const list = ordered.map((d) => {
     const isRest = d.kind === "restaurant";
     const nIng = (d.ingredients || []).length;
     const open = expandedDish === d.id;
@@ -297,7 +304,7 @@ function renderRecipes() {
   $("add-recipe").addEventListener("click", () => openDishForm(null));
   $("add-restaurant").addEventListener("click", () => openDishForm(null, "restaurant"));
   const showRest = $("show-rest");
-  if (showRest) showRest.addEventListener("change", () => { showRestaurants = showRest.checked; applyRecipeFilter(); });
+  if (showRest) showRest.addEventListener("change", () => { showRestaurants = showRest.checked; renderRecipes(); });
   const rs = $("recipe-search");
   if (rs) rs.addEventListener("input", () => { recipeSearch = rs.value; applyRecipeFilter(); });
   body.querySelectorAll("[data-rfilter]").forEach((b) =>
