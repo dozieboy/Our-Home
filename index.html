@@ -73,13 +73,7 @@
         <form id="add-form" class="add-form">
           <input type="text" id="add-name" placeholder="Add an item… (e.g. Milk x2)" required />
           <div class="add-row">
-            <select id="add-category" aria-label="Category">
-              <option value="food">🥩 Fresh food</option>
-              <option value="dry">🥫 Dry food</option>
-              <option value="ingredient">🥕 Ingredient</option>
-              <option value="household">🏠 Household</option>
-              <option value="health">💊 Health</option>
-            </select>
+            <select id="add-category" aria-label="Category"><!-- options built from js/categories.js -->
             <input type="text" id="add-qty" placeholder="Qty (optional)" />
             <button type="submit" class="btn-primary add-btn">＋ Add</button>
           </div>

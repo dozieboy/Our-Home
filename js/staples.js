@@ -1,15 +1,8 @@
 import { supabase } from "./supabase.js";
 import { toast, whoami } from "./app.js";
+import { CATEGORIES as CATS, catLabel, catOptions } from "./categories.js";
 
 const $ = (id) => document.getElementById(id);
-const CATS = [
-  { key: "food", emoji: "🥩", label: "Fresh food" },
-  { key: "dry", emoji: "🥫", label: "Dry food" },
-  { key: "ingredient", emoji: "🥕", label: "Ingredient" },
-  { key: "household", emoji: "🏠", label: "Household" },
-  { key: "health", emoji: "💊", label: "Health" },
-];
-const catLabel = (k) => { const c = CATS.find((x) => x.key === k); return c ? `${c.emoji} ${c.label}` : ""; };
 
 let staples = [];
 let onList = new Set();   // items already on the shopping list (name|category)
@@ -193,7 +186,7 @@ function render() {
         <div class="body">
           <div class="name staple-name" data-rename="${s.id}">${esc(s.name)} <span class="ren">✏️</span></div>
           <div class="meta-row">
-            <select class="cat-mini" data-setcat="${s.id}" aria-label="category">${CATS.map((c) => `<option value="${c.key}" ${c.key === s.category ? "selected" : ""}>${c.emoji} ${c.label}</option>`).join("")}</select>
+            <select class="cat-mini" data-setcat="${s.id}" aria-label="category">${catOptions(s.category)}</select>
             ${s.qty_g != null ? `<span class="meta">${stockLabel(s)} in stock</span>` : ""}
           </div>
         </div>
@@ -216,13 +209,7 @@ function render() {
     <form id="staple-add" class="add-form">
       <input type="text" id="staple-name" placeholder="Add a staple… (e.g. Dish soap)" required />
       <div class="add-row">
-        <select id="staple-cat">
-          <option value="food">🥩 Fresh food</option>
-          <option value="dry">🥫 Dry food</option>
-          <option value="ingredient">🥕 Ingredient</option>
-          <option value="household">🏠 Household</option>
-          <option value="health">💊 Health</option>
-        </select>
+        <select id="staple-cat">${catOptions("food")}</select>
         <input type="number" id="staple-g" class="staple-g" placeholder="qty" min="0" inputmode="decimal" />
         <select id="staple-unit" class="staple-unit"><option value="g">g</option><option value="ea">sz</option></select>
         <button type="submit" class="btn-primary add-btn">＋ Add</button>

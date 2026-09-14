@@ -1,6 +1,6 @@
 // Service worker — network-first สำหรับไฟล์แอป (ออนไลน์ได้ของใหม่เสมอ),
 // ใช้แคชเป็น fallback ตอนออฟไลน์
-const CACHE = "baanrao-v61";
+const CACHE = "baanrao-v62";
 const SHELL = [
   "./",
   "./index.html",
@@ -9,6 +9,7 @@ const SHELL = [
   "./js/home.js",
   "./js/shopping.js",
   "./js/staples.js",
+  "./js/categories.js",
   "./js/menu.js",
   "./js/compare.js",
   "./js/account.js",

@@ -2,14 +2,7 @@ import { supabase } from "./supabase.js";
 import { toast, whoami } from "./app.js";
 import { markInStockByNameCat } from "./staples.js";
 import { openSheet, closeSheet } from "./ui.js";
-
-const CATEGORIES = [
-  { key: "food", label: "Fresh food", emoji: "🥩" },
-  { key: "dry", label: "Dry food", emoji: "🥫" },
-  { key: "ingredient", label: "Ingredient", emoji: "🥕" },
-  { key: "household", label: "Household", emoji: "🏠" },
-  { key: "health", label: "Health", emoji: "💊" },
-];
+import { CATEGORIES, catOptions } from "./categories.js";
 
 let items = [];          // in-memory state
 let channel = null;      // realtime subscription
@@ -82,13 +75,7 @@ function openReceiptSheet() {
     <label>Items (one per line)
       <textarea id="rc-text" rows="8"></textarea></label>
     <label>Category
-      <select id="rc-cat">
-        <option value="food">🥩 Fresh food</option>
-        <option value="dry">🥫 Dry food</option>
-        <option value="ingredient">🥕 Ingredient</option>
-        <option value="household">🏠 Household</option>
-        <option value="health">💊 Health</option>
-      </select></label>
+      <select id="rc-cat">${catOptions("food")}</select></label>
     <p class="muted rc-note">For now, read the photo and type the items — automatic receipt reading (AI) can be plugged in later.</p>
     <button type="button" class="btn-primary full" id="rc-add">Add to shopping list</button>`;
   openSheet("Scan / type from receipt", wrap);
@@ -209,7 +196,7 @@ function render() {
       const li = document.createElement("li");
       li.className = "item" + (it.checked ? " done" : "");
       const meta = [it.qty, it.created_by].filter(Boolean).join(" · ");
-      const catOpts = CATEGORIES.map((c) => `<option value="${c.key}" ${c.key === it.category ? "selected" : ""}>${c.emoji} ${c.label}</option>`).join("");
+      const catOpts = catOptions(it.category);
       li.innerHTML = `
         <button class="check" aria-label="buy">${it.checked ? "✓" : ""}</button>
         <div class="body">
@@ -242,7 +229,8 @@ function render() {
 
 // Summary for Home dashboard
 export function getShoppingSummary() {
-  const byCat = { food: 0, dry: 0, ingredient: 0, household: 0, health: 0 };
+  const byCat = {};
+  CATEGORIES.forEach((c) => { byCat[c.key] = 0; });
   let remaining = 0, done = 0;
   for (const it of items) {
     if (it.checked) { done++; } else { remaining++; if (byCat[it.category] != null) byCat[it.category]++; }
@@ -252,6 +240,7 @@ export function getShoppingSummary() {
 
 // ── init / teardown ─────────────────────────────────
 export async function initShopping() {
+  $("add-category").innerHTML = catOptions("food");   // build from the shared category list
   $("scan-receipt").addEventListener("click", openReceiptSheet);
 
   $("add-form").addEventListener("submit", (e) => {
