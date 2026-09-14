@@ -68,40 +68,35 @@
       <!-- Home -->
       <section id="screen-home" class="screen" hidden></section>
 
-      <!-- Shopping -->
+      <!-- Shopping list -->
       <section id="screen-shopping" class="screen" hidden>
-        <div class="subtabs">
-          <button class="subtab active" data-shopsub="list">🛒 Shopping list</button>
-          <button class="subtab" data-shopsub="staples">📦 Stock</button>
-        </div>
-
-        <div id="shop-list-view">
-          <form id="add-form" class="add-form">
-            <input type="text" id="add-name" placeholder="Add an item… (e.g. Milk x2)" required />
-            <div class="add-row">
-              <select id="add-category" aria-label="Category">
-                <option value="food">🍎 Food</option>
-                <option value="ingredient">🥕 Ingredient</option>
-                <option value="household">🏠 Household</option>
-                <option value="health">💊 Health</option>
-              </select>
-              <input type="text" id="add-qty" placeholder="Qty (optional)" />
-              <button type="submit" class="btn-primary add-btn">＋ Add</button>
-            </div>
-          </form>
-          <button type="button" id="scan-receipt" class="btn-scan">📷 Scan / type from receipt</button>
-          <div id="sync-status" class="sync-status muted"></div>
-          <div id="lists"></div>
-          <p id="empty-state" class="empty" hidden>No items yet — add your first one ✨</p>
-        </div>
-
-        <div id="shop-staples-view" hidden></div>
+        <form id="add-form" class="add-form">
+          <input type="text" id="add-name" placeholder="Add an item… (e.g. Milk x2)" required />
+          <div class="add-row">
+            <select id="add-category" aria-label="Category">
+              <option value="food">🍎 Food</option>
+              <option value="ingredient">🥕 Ingredient</option>
+              <option value="household">🏠 Household</option>
+              <option value="health">💊 Health</option>
+            </select>
+            <input type="text" id="add-qty" placeholder="Qty (optional)" />
+            <button type="submit" class="btn-primary add-btn">＋ Add</button>
+          </div>
+        </form>
+        <button type="button" id="scan-receipt" class="btn-scan">📷 Scan / type from receipt</button>
+        <div id="sync-status" class="sync-status muted"></div>
+        <div id="lists"></div>
+        <p id="empty-state" class="empty" hidden>No items yet — add your first one ✨</p>
       </section>
 
-      <!-- Modules -->
+      <!-- Stock -->
+      <section id="screen-stock" class="screen" hidden></section>
+
+      <!-- Meals (today & plan) -->
       <section id="screen-menu" class="screen" hidden></section>
-      <section id="screen-pets" class="screen" hidden></section>
-      <section id="screen-finance" class="screen" hidden></section>
+      <!-- Recipes -->
+      <section id="screen-recipes" class="screen" hidden></section>
+
       <section id="screen-compare" class="screen" hidden></section>
       <section id="screen-account" class="screen" hidden></section>
     </main>

@@ -1,5 +1,5 @@
 import { supabase } from "./supabase.js";
-import { toast, whoami } from "./app.js";
+import { toast, whoami, setTab } from "./app.js";
 import { openSheet, closeSheet, esc } from "./ui.js";
 import { getStockByName, getStockNames, getStockList } from "./staples.js";
 import { getHasKids } from "./settings.js";
@@ -31,7 +31,6 @@ function sideBadge(d) {
 let dishes = [];        // {id,name,difficulty,ingredients:[{name,defrost}],steps}
 let plan = [];          // {id,plan_date,slot,dish_id}
 let selectedDate = todayISO();
-let subTab = "today";   // 'today' | 'recipes'
 let expandedDish = null;
 let channels = [];
 let recipeSearch = "";          // filter text for the Recipes list
@@ -78,16 +77,17 @@ async function reload() {
   if (pRes.error) console.error(pRes.error);
   dishes = dRes.data || [];
   plan = pRes.data || [];
-  render();
+  refreshMenuScreens();
   document.dispatchEvent(new CustomEvent("menu-changed"));
 }
 
 // ── Summary for Home ────────────────────────────────
 export function getMenuSummaryFor(iso) {
   const slotList = slots().map((s) => {
-    const names = plan.filter((p) => p.plan_date === iso && p.slot === s.key)
-      .map((p) => dishFor(p.dish_id)?.name).filter(Boolean);
-    return { key: s.key, label: s.label, emoji: s.emoji, dishes: names };
+    const entries = plan.filter((p) => p.plan_date === iso && p.slot === s.key);
+    const names = entries.map((p) => dishFor(p.dish_id)?.name).filter(Boolean);
+    const ids = entries.map((p) => p.dish_id).filter((id) => dishFor(id));
+    return { key: s.key, label: s.label, emoji: s.emoji, dishes: names, ids };
   });
   const defrost = defrostFor(addDays(iso, 1));
   return { slots: slotList, defrostTomorrow: defrost };
@@ -121,18 +121,25 @@ function prepFor(iso) {
 }
 
 // ── Render ──────────────────────────────────────────
+// Meals tab = Today & plan; Recipes is its own tab now.
 function render() {
   const el = $("screen-menu");
-  el.innerHTML = `
-    <div class="subtabs">
-      <button class="subtab ${subTab === "today" ? "active" : ""}" data-sub="today">📅 Today & plan</button>
-      <button class="subtab ${subTab === "recipes" ? "active" : ""}" data-sub="recipes">📖 Recipes</button>
-    </div>
-    <div id="menu-body"></div>`;
-  el.querySelectorAll("[data-sub]").forEach((b) =>
-    b.addEventListener("click", () => { subTab = b.dataset.sub; render(); }));
-  if (subTab === "today") renderToday();
-  else renderRecipes();
+  if (!el) return;
+  el.innerHTML = `<div id="menu-body"></div>`;
+  renderToday();
+}
+export function renderRecipesScreen() {
+  const el = $("screen-recipes");
+  if (!el) return;
+  el.innerHTML = `<div id="recipes-body"></div>`;
+  renderRecipes();
+}
+// Re-render whichever meal-related screens are currently visible
+function refreshMenuScreens() {
+  const menu = $("screen-menu");
+  if (menu && !menu.hidden) render();
+  const rec = $("screen-recipes");
+  if (rec && !rec.hidden) renderRecipesScreen();
 }
 
 function renderToday() {
@@ -216,7 +223,8 @@ function renderToday() {
 }
 
 function renderRecipes() {
-  const body = $("menu-body");
+  const body = $("recipes-body");
+  if (!body) return;
   const list = dishes.map((d) => {
     const isRest = d.kind === "restaurant";
     const nIng = (d.ingredients || []).length;
@@ -401,11 +409,10 @@ async function restockAddAll() {
 }
 
 // Jump from a planned meal straight to its recipe (Recipes tab, expanded)
-function goToRecipe(dishId) {
+export function goToRecipe(dishId) {
   if (!dishFor(dishId)) return;
-  subTab = "recipes";
   expandedDish = dishId;
-  render();
+  setTab("recipes");   // switches tab + renders the Recipes screen with this one expanded
   const rec = document.querySelector(`[data-expand="${dishId}"]`);
   if (rec) rec.scrollIntoView({ behavior: "smooth", block: "center" });
 }
@@ -640,7 +647,7 @@ export function renderMenu() { render(); }
 // Kid meal slot appears/disappears when the household's "has kids" setting changes
 document.addEventListener("settings-changed", () => {
   const el = $("screen-menu");
-  if (el && !el.hidden && subTab === "today") render();
+  if (el && !el.hidden) render();
 });
 
 export async function initMenu() {

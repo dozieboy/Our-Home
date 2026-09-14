@@ -1,9 +1,7 @@
 import { supabase, isConfigured } from "./supabase.js";
 import { initShopping, teardownShopping } from "./shopping.js";
-import { initStaples, teardownStaples } from "./staples.js";
-import { initMenu, teardownMenu, renderMenu } from "./menu.js";
-import { initPets, teardownPets, renderPets } from "./pets.js";
-import { initFinance, teardownFinance, renderFinance } from "./finance.js";
+import { initStaples, teardownStaples, renderStaples } from "./staples.js";
+import { initMenu, teardownMenu, renderMenu, renderRecipesScreen } from "./menu.js";
 import { renderCompare } from "./compare.js";
 import { renderAccount, recordMe } from "./account.js";
 import { initSettings, teardownSettings } from "./settings.js";
@@ -16,8 +14,8 @@ const TABS = [
   { key: "home", label: "Home", emoji: "🏠" },
   { key: "shopping", label: "Shopping", emoji: "🛒" },
   { key: "menu", label: "Meals", emoji: "🍳" },
-  { key: "pets", label: "Pets", emoji: "🐾" },
-  { key: "finance", label: "Finance", emoji: "💰" },
+  { key: "stock", label: "Stock", emoji: "📦" },
+  { key: "recipes", label: "Recipes", emoji: "📖" },
   { key: "compare", label: "Compare", emoji: "⚖️" },
   { key: "account", label: "Account", emoji: "👤" },
 ];
@@ -63,8 +61,8 @@ export function setTab(key) {
 
   if (tab.key === "home") renderHome();
   if (tab.key === "menu") renderMenu();
-  if (tab.key === "pets") renderPets();
-  if (tab.key === "finance") renderFinance();
+  if (tab.key === "stock") renderStaples();
+  if (tab.key === "recipes") renderRecipesScreen();
   if (tab.key === "compare") renderCompare();
   if (tab.key === "account") renderAccount();
   window.scrollTo(0, 0);
@@ -167,9 +165,9 @@ async function applySession(session) {
     showView("app");
     setTab("home");
     recordMe();   // record my email as a household member (fire & forget)
-    if (!started) { started = true; await Promise.all([initSettings(), initShopping(), initStaples(), initMenu(), initPets(), initFinance()]); }
+    if (!started) { started = true; await Promise.all([initSettings(), initShopping(), initStaples(), initMenu()]); }
   } else {
-    if (started) { teardownSettings(); teardownShopping(); teardownStaples(); teardownMenu(); teardownPets(); teardownFinance(); started = false; }
+    if (started) { teardownSettings(); teardownShopping(); teardownStaples(); teardownMenu(); started = false; }
     showView("login");
   }
 }

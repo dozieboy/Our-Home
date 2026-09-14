@@ -1,8 +1,6 @@
 import { getShoppingSummary } from "./shopping.js";
 import { getStaplesSummary } from "./staples.js";
-import { getMenuSummaryFor } from "./menu.js";
-import { getPetsSummary } from "./pets.js";
-import { getFinanceSummary } from "./finance.js";
+import { getMenuSummaryFor, goToRecipe } from "./menu.js";
 import { getHomeName } from "./settings.js";
 import { whoami, setTab } from "./app.js";
 
@@ -33,8 +31,6 @@ export function renderHome() {
   const s = getShoppingSummary();
   const st = getStaplesSummary();
   const m = getMenuSummaryFor(offsetISO(homeMealOffset));
-  const pet = getPetsSummary();
-  const fin = getFinanceSummary();
   const name = whoami();
 
   const catChips = [
@@ -47,17 +43,12 @@ export function renderHome() {
   const meals3 = m.slots.map((sl) => {
     const kid = (sl.key || "").startsWith("kid");
     const label = kid ? (sl.label || "").replace("Kid ", "") : sl.label;
-    return `<div class="hm-meal ${kid ? "hm-meal-kid" : ""}">
+    const id = sl.ids && sl.ids.length ? sl.ids[0] : "";
+    return `<div class="hm-meal ${kid ? "hm-meal-kid" : ""} hm-meal-link" data-mealid="${esc(id)}">
       <div class="hm-meal-label"><span class="hm-meal-emoji">${sl.emoji}</span><br>${esc(label)}</div>
       <div class="hm-meal-dish ${sl.dishes.length ? "" : "muted"}">${sl.dishes.length ? esc(sl.dishes.join(", ")) : "—"}</div>
     </div>`;
   }).join("");
-
-  const petRows = pet.upcoming.length
-    ? pet.upcoming.map((t) => `<div class="hm-event"><span class="ev-dot" style="background:${t.color}"></span>
-        <span class="hm-ev-title">${t.kind.emoji} ${t.kind.label} · ${esc(t.petName)}</span>
-        <span class="hm-ev-time ${t.cd.over ? "over" : "muted"}">${t.cd.text}</span></div>`).join("")
-    : `<div class="muted">No reminders</div>`;
 
   el.innerHTML = `
     <div class="greeting">
@@ -75,37 +66,29 @@ export function renderHome() {
       ${homeMealOffset === 0 && m.defrostTomorrow.length ? `<div class="hm-defrost">🧊 Tomorrow: take out ${m.defrostTomorrow.map(esc).join(", ")}</div>` : ""}
     </div>
 
-    <button class="dash-card" data-go="shopping" data-sub="list">
+    <button class="dash-card" data-go="shopping">
       <div class="dash-head"><span>🛒 Shopping List</span><span class="chev">›</span></div>
       <div class="dash-big"><b>${s.remaining}</b> item(s) to buy</div>
       <div class="mini-chips">${catChips}</div>
     </button>
 
-    <button class="dash-card" data-go="shopping" data-sub="staples">
+    <button class="dash-card" data-go="stock">
       <div class="dash-head"><span>📦 Stock</span><span class="chev">›</span></div>
       ${st.total
         ? `<div class="dash-big"><b>${st.total}</b> item(s) tracked</div>
            <div class="${st.out ? "restock-line" : "muted done-line"}">${st.out ? `🔴 ${st.out} out — restock` : "✅ All in stock"}</div>`
         : `<div class="muted">No stock items yet</div>`}
     </button>
-
-    <button class="dash-card" data-go="pets">
-      <div class="dash-head"><span>🐾 Pet reminders</span><span class="chev">›</span></div>
-      <div class="hm-events">${petRows}</div>
-    </button>
-
-    <button class="dash-card" data-go="finance">
-      <div class="dash-head"><span>💰 Finance</span><span class="chev">›</span></div>
-      <div class="dash-big"><b>${money(fin.monthTotal)}</b> this month</div>
-      ${fin.settleText ? `<div class="muted done-line">💸 ${fin.settleText}</div>` : ""}
-    </button>
   `;
 
   el.querySelectorAll("[data-go]").forEach((btn) =>
-    btn.addEventListener("click", () => {
-      setTab(btn.getAttribute("data-go"));
-      const sub = btn.getAttribute("data-sub");
-      if (sub) { const b = document.querySelector(`[data-shopsub="${sub}"]`); if (b) b.click(); }
+    btn.addEventListener("click", () => setTab(btn.getAttribute("data-go"))));
+
+  // Tap a meal cell → open that recipe (or the Meals tab if empty)
+  el.querySelectorAll("[data-mealid]").forEach((c) =>
+    c.addEventListener("click", () => {
+      const id = c.dataset.mealid;
+      if (id) goToRecipe(id); else setTab("menu");
     }));
 
   const setDay = (n) => { homeMealOffset = Math.max(-1, Math.min(14, n)); renderHome(); };
@@ -124,16 +107,6 @@ export function renderHome() {
   }
 }
 
-function moduleCard(key, emoji, label) {
-  return `<button class="dash-mini" data-go="${key}">
-    <span class="dash-mini-emoji">${emoji}</span>
-    <span class="dash-mini-label">${label}</span>
-    <span class="soon">Coming soon</span>
-  </button>`;
-}
-
-function money(n) { return "฿" + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
-
 function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -143,5 +116,3 @@ document.addEventListener("shopping-changed", () => { if (!$("screen-home").hidd
 document.addEventListener("staples-changed", () => { if (!$("screen-home").hidden) renderHome(); });
 document.addEventListener("menu-changed", () => { if (!$("screen-home").hidden) renderHome(); });
 document.addEventListener("settings-changed", () => { if (!$("screen-home").hidden) renderHome(); });
-document.addEventListener("pets-changed", () => { if (!$("screen-home").hidden) renderHome(); });
-document.addEventListener("finance-changed", () => { if (!$("screen-home").hidden) renderHome(); });

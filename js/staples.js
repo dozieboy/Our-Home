@@ -160,7 +160,7 @@ export async function markInStockByNameCat(name, category, addQty, addUnit) {
 }
 
 function render() {
-  const el = $("shop-staples-view");
+  const el = $("screen-stock");
   if (!el) return;
   const out = staples.filter((s) => !s.in_stock);
   const waiting = out.filter((s) => !onList.has(keyOf(s.name, s.category)));   // out + not yet on list
@@ -259,7 +259,8 @@ export function renderStaples() { render(); }
 
 // When the shopping list changes (bought/removed) → refresh the pantry's "on list" state
 document.addEventListener("shopping-changed", async () => {
-  if (!$("shop-staples-view")) return;
+  const el = $("screen-stock");
+  if (!el || el.hidden) return;
   await refreshOnList();
   render();
 });

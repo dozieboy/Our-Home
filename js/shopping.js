@@ -1,6 +1,6 @@
 import { supabase } from "./supabase.js";
 import { toast, whoami } from "./app.js";
-import { renderStaples, markInStockByNameCat } from "./staples.js";
+import { markInStockByNameCat } from "./staples.js";
 import { openSheet, closeSheet } from "./ui.js";
 
 const CATEGORIES = [
@@ -240,17 +240,6 @@ export function getShoppingSummary() {
 
 // ── init / teardown ─────────────────────────────────
 export async function initShopping() {
-  // Sub-tabs: Shopping list | Pantry
-  document.querySelectorAll("[data-shopsub]").forEach((b) =>
-    b.addEventListener("click", () => {
-      const sub = b.dataset.shopsub;
-      document.querySelectorAll("[data-shopsub]").forEach((x) => x.classList.toggle("active", x === b));
-      $("shop-list-view").hidden = sub !== "list";
-      $("shop-staples-view").hidden = sub !== "staples";
-      if (sub === "staples") renderStaples();
-      window.scrollTo(0, 0);
-    }));
-
   $("scan-receipt").addEventListener("click", openReceiptSheet);
 
   $("add-form").addEventListener("submit", (e) => {
