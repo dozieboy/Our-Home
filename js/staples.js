@@ -42,8 +42,8 @@ async function addStaple(name, category, qty, unit) {
   const { error } = await supabase.from("staples").insert({ name, category, qty_g: qty || null, unit: unit || "g", created_by: whoami() || null });
   if (error) {
     console.error(error);
-    toast(/column .*(unit|qty_g)/i.test(error.message || "")
-      ? "Run schema_staples.sql first (missing column)"
+    toast(/column .*(unit|qty_g)|check|constraint|23514/i.test((error.message || "") + (error.code || ""))
+      ? "Run schema_staples.sql first (missing column/category)"
       : "Couldn't add: " + (error.message || error.code || "error"));
     return;
   }
@@ -99,7 +99,14 @@ async function changeStapleCategory(id, category) {
   const old = s.category;
   s.category = category; render();   // optimistic → jumps to the new section
   const { error } = await supabase.from("staples").update({ category }).eq("id", id);
-  if (error) { s.category = old; render(); toast("Couldn't update"); return; }
+  if (error) {
+    s.category = old; render();
+    console.error(error);
+    toast(/check|constraint|23514/i.test((error.message || "") + (error.code || ""))
+      ? "Run schema_staples.sql first (new category)"
+      : "Couldn't update: " + (error.message || error.code || "error"));
+    return;
+  }
   const c = CATS.find((x) => x.key === category);
   toast(`→ ${c ? c.emoji + " " + c.label : category}`);
 }
