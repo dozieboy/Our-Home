@@ -360,6 +360,9 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 .acct-hint { font-size: 11px; opacity: .8; }
 .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 12px; font-size: 15px; font-family: inherit; cursor: pointer; }
 .btn-secondary.full { width: 100%; }
+#add-restaurant { margin-top: 8px; }
+.show-rest { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin: 10px 2px; cursor: pointer; }
+.show-rest input { width: auto; margin: 0; }
 .fam-form { display: flex; gap: 8px; margin-bottom: 12px; }
 .fam-form input { flex: 1; min-width: 0; padding: 11px 12px; font-size: 15px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); font-family: inherit; }
 .me-tag { font-size: 11px; background: var(--primary); color: #fff; border-radius: 999px; padding: 2px 7px; font-weight: 600; vertical-align: middle; }

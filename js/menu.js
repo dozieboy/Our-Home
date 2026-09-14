@@ -35,6 +35,7 @@ let expandedDish = null;
 let channels = [];
 let recipeSearch = "";          // filter text for the Recipes list
 let recipeTagFilter = "";       // "" | breakfast | lunch | dinner
+let showRestaurants = false;    // Recipes list hides restaurants until this is ticked
 let restockPanel = null;        // null | 'day' | 'week' — which restock preview is expanded
 let restockItems = [];          // shortfall items for the open panel
 let onShoppingList = new Set();  // lowercased names already on the shopping list
@@ -231,7 +232,7 @@ function renderRecipes() {
     const open = expandedDish === d.id;
     const steps = (d.steps || "").split("\n").map((s) => s.trim()).filter(Boolean);
     const tags = d.meal_tags || [];
-    return `<div class="recipe ${open ? "open" : ""}" data-rn="${esc(d.name.toLowerCase())}" data-tags="${esc(tags.join(" "))}">
+    return `<div class="recipe ${open ? "open" : ""}" data-rn="${esc(d.name.toLowerCase())}" data-tags="${esc(tags.join(" "))}" data-rest="${isRest ? 1 : 0}">
       <div class="recipe-head" data-expand="${d.id}">
         <div>
           <div class="recipe-name">${esc(d.name)}</div>
@@ -271,7 +272,9 @@ function renderRecipes() {
 
   body.innerHTML = `
     <button class="btn-primary full" id="add-recipe">＋ Add recipe</button>
-    ${dishes.length ? `<input type="search" id="recipe-search" class="search-box" placeholder="🔎 Search saved recipes…" value="${esc(recipeSearch)}">${filterChips}` : ""}
+    <button class="btn-secondary full" id="add-restaurant">🍽️ ＋ Add restaurant</button>
+    ${dishes.length ? `<input type="search" id="recipe-search" class="search-box" placeholder="🔎 Search saved recipes…" value="${esc(recipeSearch)}">${filterChips}
+      <label class="show-rest"><input type="checkbox" id="show-rest" ${showRestaurants ? "checked" : ""}> 🍽️ Show restaurants</label>` : ""}
     ${dishes.length ? `<div class="recipe-list">${list}</div><p class="empty" id="recipe-none" hidden>No recipe matches your filter</p>`
       : `<p class="empty">No recipes yet — add your first 📖</p>`}`;
 
@@ -282,7 +285,8 @@ function renderRecipes() {
     body.querySelectorAll(".recipe").forEach((r) => {
       const okText = !q || (r.dataset.rn || "").includes(q);
       const okTag = !tf || (r.dataset.tags || "").split(" ").includes(tf);
-      const hit = okText && okTag;
+      const okRest = showRestaurants || r.dataset.rest !== "1";   // restaurants hidden unless ticked
+      const hit = okText && okTag && okRest;
       r.hidden = !hit;
       if (hit) shown++;
     });
@@ -291,6 +295,9 @@ function renderRecipes() {
   };
 
   $("add-recipe").addEventListener("click", () => openDishForm(null));
+  $("add-restaurant").addEventListener("click", () => openDishForm(null, "restaurant"));
+  const showRest = $("show-rest");
+  if (showRest) showRest.addEventListener("change", () => { showRestaurants = showRest.checked; applyRecipeFilter(); });
   const rs = $("recipe-search");
   if (rs) rs.addEventListener("input", () => { recipeSearch = rs.value; applyRecipeFilter(); });
   body.querySelectorAll("[data-rfilter]").forEach((b) =>
@@ -493,7 +500,7 @@ async function removePlan(id) {
 }
 
 // ── Add / edit recipe form ──────────────────────────
-function openDishForm(dishId) {
+function openDishForm(dishId, initialKind) {
   const d = dishId ? dishFor(dishId) : null;
   // Ingredient picker data: stock items first (with status), then names used before.
   const stockList = getStockList();                         // [{name,in_stock,qty_g,unit}]
@@ -526,12 +533,13 @@ function openDishForm(dishId) {
       <input type="url" id="df-url" placeholder="https://…" value="${d ? esc(d.source_url || "") : ""}"></label>
     <button type="button" class="btn-primary full" id="df-save">${d ? "Save changes" : "Save recipe"}</button>`;
 
-  openSheet(d ? "Edit recipe" : "Add recipe", form);
+  const isRestForm = (d ? d.kind : initialKind) === "restaurant";
+  openSheet(d ? "Edit recipe" : (isRestForm ? "Add restaurant" : "Add recipe"), form);
   const savedTags = (d && d.meal_tags) || [];
   form.querySelectorAll(".mt-check").forEach((c) => { c.checked = savedTags.includes(c.value); });
 
-  // Cook vs Restaurant toggle
-  let kind = d?.kind === "restaurant" ? "restaurant" : "cook";
+  // Cook vs Restaurant toggle (new dishes can be opened straight into Restaurant mode)
+  let kind = (d ? d.kind : initialKind) === "restaurant" ? "restaurant" : "cook";
   const applyKind = () => {
     form.dataset.kind = kind;
     form.querySelectorAll(".kind-seg").forEach((b) => b.classList.toggle("active", b.dataset.kind === kind));
@@ -667,6 +675,6 @@ export function teardownMenu() {
   channels = [];
   dishes = []; plan = [];
   restockPanel = null; restockItems = []; onShoppingList = new Set();
-  recipeSearch = ""; recipeTagFilter = "";
+  recipeSearch = ""; recipeTagFilter = ""; showRestaurants = false;
   closeSheet();
 }
