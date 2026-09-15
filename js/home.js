@@ -12,8 +12,16 @@ function todayText() {
   } catch { return ""; }
 }
 
+// After 18:00 Thailand time, default the Home meals card to tomorrow.
+function defaultDayOffset() {
+  try {
+    const h = Number(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hourCycle: "h23", timeZone: "Asia/Bangkok" }).format(new Date()));
+    return h >= 18 ? 1 : 0;
+  } catch { return 0; }
+}
 // Which day the Today's-meals card is showing (0 = today). Swipe/arrows change it.
-let homeMealOffset = 0;
+let homeMealOffset = defaultDayOffset();
+let userPickedDay = false;   // once the user swipes/taps an arrow, stop auto-defaulting
 // Which shopping categories are expanded in the Home dropdown
 let shopOpen = new Set();
 const pad = (n) => String(n).padStart(2, "0");
@@ -30,6 +38,7 @@ export function renderHome() {
   const el = $("screen-home");
   const title = $("screen-title");
   if (title) title.textContent = getHomeName() || "Home";   // custom household name in the top bar
+  if (!userPickedDay) homeMealOffset = defaultDayOffset();   // fresh view follows the clock (18:00 → tomorrow)
   const s = getShoppingSummary();
   const st = getStaplesSummary();
   const m = getMenuSummaryFor(offsetISO(homeMealOffset));
@@ -112,7 +121,7 @@ export function renderHome() {
       if (id) goToRecipe(id); else setTab("menu");
     }));
 
-  const setDay = (n) => { homeMealOffset = Math.max(-1, Math.min(14, n)); renderHome(); };
+  const setDay = (n) => { userPickedDay = true; homeMealOffset = Math.max(-1, Math.min(14, n)); renderHome(); };
   el.querySelectorAll("[data-dayoff]").forEach((b) =>
     b.addEventListener("click", () => setDay(homeMealOffset + (+b.dataset.dayoff))));
   const card = el.querySelector(".hm-meal-card");

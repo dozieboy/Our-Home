@@ -56,6 +56,8 @@ function dayLabel(iso) {
   return fmtDate(iso);
 }
 const dishFor = (id) => dishes.find((d) => d.id === id);
+// A planned meal's effective ingredients — its per-day override if set, else the recipe's
+const planIngs = (p) => (Array.isArray(p.ingredients) ? p.ingredients : (dishFor(p.dish_id)?.ingredients || []));
 
 // Quantity helpers — unit is 'g' (grams) or 'ea' (each). Reads legacy `grams` too.
 function ingQty(i) {
@@ -99,8 +101,7 @@ export function getTodayMenuSummary() { return getMenuSummaryFor(todayISO()); }
 function defrostFor(iso) {
   const names = new Set();
   for (const p of plan.filter((x) => x.plan_date === iso)) {
-    const d = dishFor(p.dish_id);
-    (d?.ingredients || []).forEach((ing) => { if (ing.defrost && ing.name) names.add(ing.name); });
+    planIngs(p).forEach((ing) => { if (ing.defrost && ing.name) names.add(ing.name); });
   }
   return [...names];
 }
@@ -108,8 +109,7 @@ function defrostFor(iso) {
 function prepFor(iso) {
   const map = new Map();
   for (const p of plan.filter((x) => x.plan_date === iso)) {
-    const d = dishFor(p.dish_id);
-    (d?.ingredients || []).forEach((ing) => {
+    planIngs(p).forEach((ing) => {
       if (!ing.name) return;
       const key = norm(ing.name);
       const { qty, unit } = ingQty(ing);
@@ -155,9 +155,14 @@ function renderToday() {
     const rows = entries.map((p) => {
       const d = dishFor(p.dish_id);
       if (!d) return "";
+      const custom = Array.isArray(p.ingredients);
+      const editBtn = d.kind !== "restaurant"
+        ? `<button class="sd-edit ${custom ? "on" : ""}" data-editplan="${p.id}" title="Adjust ingredients for this day">🧂${custom ? " edited" : ""}</button>`
+        : "";
       return `<div class="slot-dish">
         <span class="sd-name" data-gotodish="${d.id}" role="button" tabindex="0">${esc(d.name)} <span class="sd-go">›</span></span>
         ${sideBadge(d)}
+        ${editBtn}
         <button class="sd-del" data-delplan="${p.id}">✕</button>
       </div>`;
     }).join("") || `<div class="slot-empty muted">No meal yet</div>`;
@@ -213,6 +218,8 @@ function renderToday() {
     b.addEventListener("click", () => removePlan(b.dataset.delplan)));
   body.querySelectorAll("[data-gotodish]").forEach((el) =>
     el.addEventListener("click", () => goToRecipe(el.dataset.gotodish)));
+  body.querySelectorAll("[data-editplan]").forEach((b) =>
+    b.addEventListener("click", () => openPlanIngredients(b.dataset.editplan)));
   const amd = $("add-missing-day");
   if (amd) amd.addEventListener("click", () => openRestockPanel("day"));
   const amw = $("add-missing-week");
@@ -381,7 +388,7 @@ function ingredientsInRange(from, to) {
   for (const p of plan.filter((x) => x.plan_date >= from && x.plan_date <= to)) {
     const d = dishFor(p.dish_id);
     if (!d || d.kind === "restaurant") continue;   // eating out → nothing to buy
-    (d.ingredients || []).forEach((i) => ings.push(i));
+    planIngs(p).forEach((i) => ings.push(i));
   }
   return ings;
 }
@@ -524,6 +531,74 @@ async function assignDish(slot, dishId) {
 async function removePlan(id) {
   const { error } = await supabase.from("meal_plan").delete().eq("id", id);
   if (error) { toast("Couldn't delete"); return; }
+  await reload();
+}
+
+// ── Adjust ingredients for ONE planned meal (this day only, not the recipe) ──
+function openPlanIngredients(planId) {
+  const p = plan.find((x) => x.id === planId);
+  if (!p) return;
+  const d = dishFor(p.dish_id);
+  if (!d) return;
+  const current = Array.isArray(p.ingredients) ? p.ingredients : (d.ingredients || []);
+  const stockNames = getStockNames();
+  const form = document.createElement("div");
+  form.className = "dish-form";
+  form.innerHTML = `
+    <p class="muted plan-ing-note">For <b>${esc(d.name)}</b> · ${dayLabel(p.plan_date)} only — the saved recipe won't change.</p>
+    <datalist id="pl-stock">${stockNames.map((n) => `<option value="${esc(n)}"></option>`).join("")}</datalist>
+    <div id="pl-ings"></div>
+    <button type="button" class="link-btn" id="pl-add-ing">＋ Add ingredient</button>
+    <button type="button" class="btn-primary full" id="pl-save">Save for this meal</button>
+    ${Array.isArray(p.ingredients) ? `<button type="button" class="link-btn" id="pl-reset">↩ Reset to recipe default</button>` : ""}`;
+  openSheet("Adjust meal ingredients", form);
+
+  const box = form.querySelector("#pl-ings");
+  const addRow = (name = "", qty = "", unit = "g", defrost = false) => {
+    const row = document.createElement("div");
+    row.className = "ing-row";
+    row.innerHTML = `
+      <input type="text" class="ing-name" list="pl-stock" autocomplete="off" placeholder="Ingredient" value="${esc(name)}">
+      <input type="number" class="ing-g" placeholder="qty" min="0" inputmode="decimal" value="${qty != null ? qty : ""}">
+      <select class="ing-unit"><option value="g">g</option><option value="ea">sz</option></select>
+      <label class="ing-frost"><input type="checkbox" class="ing-defrost" ${defrost ? "checked" : ""}> 🧊</label>
+      <button type="button" class="ing-del">✕</button>`;
+    row.querySelector(".ing-unit").value = unit === "ea" ? "ea" : "g";
+    row.querySelector(".ing-del").addEventListener("click", () => row.remove());
+    box.appendChild(row);
+    return row;
+  };
+  (current.length ? current : [{ name: "" }]).forEach((i) => { const { qty, unit } = ingQty(i); addRow(i.name, qty != null ? qty : "", unit, i.defrost); });
+  form.querySelector("#pl-add-ing").addEventListener("click", () => addRow());
+  form.querySelector("#pl-save").addEventListener("click", () => savePlanIngredients(planId, form));
+  const reset = form.querySelector("#pl-reset");
+  if (reset) reset.addEventListener("click", () => savePlanIngredients(planId, null));
+}
+
+// Save (form) or clear (null → back to recipe default) a planned meal's ingredient override
+async function savePlanIngredients(planId, form) {
+  let ingredients = null;
+  if (form) {
+    ingredients = [...form.querySelectorAll(".ing-row")].map((r) => {
+      const q = parseFloat(r.querySelector(".ing-g").value);
+      return {
+        name: r.querySelector(".ing-name").value.trim(),
+        qty: q > 0 ? q : null,
+        unit: r.querySelector(".ing-unit").value === "ea" ? "ea" : "g",
+        defrost: r.querySelector(".ing-defrost").checked,
+      };
+    }).filter((i) => i.name);
+  }
+  const { error } = await supabase.from("meal_plan").update({ ingredients }).eq("id", planId);
+  if (error) {
+    console.error(error);
+    toast(/column .*ingredients/i.test(error.message || "")
+      ? "Run schema_menu.sql first (meal_plan.ingredients)"
+      : "Couldn't save: " + (error.message || error.code || "error"));
+    return;
+  }
+  closeSheet();
+  toast(ingredients ? "Saved for this meal 🧂" : "Reset to recipe default");
   await reload();
 }
 

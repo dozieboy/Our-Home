@@ -33,6 +33,9 @@ alter table public.dishes add column if not exists kind text not null default 'c
 -- meal tags (breakfast/lunch/dinner) for filtering recipes — safe to re-run
 alter table public.dishes add column if not exists meal_tags jsonb not null default '[]'::jsonb;
 
+-- per-day ingredient override for a planned meal (null = use the recipe's) — safe to re-run
+alter table public.meal_plan add column if not exists ingredients jsonb;
+
 -- allow kid meal slots (breakfast/lunch/dinner for kids) — safe to re-run
 alter table public.meal_plan drop constraint if exists meal_plan_slot_check;
 alter table public.meal_plan add constraint meal_plan_slot_check
