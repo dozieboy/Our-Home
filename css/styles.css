@@ -248,7 +248,10 @@ button.dash-card { cursor: pointer; }
 .slots-divider { font-weight: 700; font-size: 14px; color: var(--muted); margin: 6px 2px -2px; }
 .slot-head { font-weight: 700; font-size: 15px; margin-bottom: 8px; }
 .slot-dish { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border); }
-.sd-name { flex: 1; font-size: 15px; cursor: pointer; color: var(--primary); font-weight: 600; }
+.sd-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.sd-name { font-size: 15px; cursor: pointer; color: var(--primary); font-weight: 600; }
+.sd-note { background: var(--bg); border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-family: inherit; font-size: 12px; padding: 2px 9px; cursor: pointer; }
+.sd-note.on { background: #fef9c3; border-color: #fde68a; color: #854d0e; }
 .sd-name:hover { text-decoration: underline; }
 .sd-go { color: var(--muted); font-weight: 400; }
 .sd-del { background: none; border: none; color: var(--muted); font-size: 15px; cursor: pointer; padding: 4px; }
@@ -296,6 +299,7 @@ button.dash-card { cursor: pointer; }
 .hm-meal-emoji { font-size: 30px; display: inline-block; line-height: 1; margin-bottom: 4px; }
 .hm-meal-dish { font-size: 13px; font-weight: 600; word-break: break-word; }
 .hm-meal-dish.muted { font-weight: 400; }
+.hm-meal-note { font-size: 11px; color: var(--muted); margin-top: 2px; word-break: break-word; }
 .hm-defrost { margin-top: 10px; font-size: 13px; background: #e0f2fe; color: #075985; padding: 8px 12px; border-radius: 10px; }
 
 /* Bottom sheet */

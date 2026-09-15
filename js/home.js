@@ -65,10 +65,14 @@ export function renderHome() {
   const meals3 = m.slots.map((sl) => {
     const kid = (sl.key || "").startsWith("kid");
     const label = kid ? (sl.label || "").replace("Kid ", "") : sl.label;
-    const id = sl.ids && sl.ids.length ? sl.ids[0] : "";
+    const items = sl.items || [];
+    const id = items.length ? items[0].id : "";
+    const names = items.map((e) => e.name);
+    const notes = items.map((e) => e.note).filter(Boolean);
     return `<div class="hm-meal ${kid ? "hm-meal-kid" : ""} hm-meal-link" data-mealid="${esc(id)}">
       <div class="hm-meal-label"><span class="hm-meal-emoji">${sl.emoji}</span><br>${esc(label)}</div>
-      <div class="hm-meal-dish ${sl.dishes.length ? "" : "muted"}">${sl.dishes.length ? esc(sl.dishes.join(", ")) : "—"}</div>
+      <div class="hm-meal-dish ${names.length ? "" : "muted"}">${names.length ? esc(names.join(", ")) : "—"}</div>
+      ${notes.length ? `<div class="hm-meal-note">${esc(notes.join(", "))}</div>` : ""}
     </div>`;
   }).join("");
 

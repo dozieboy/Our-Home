@@ -88,9 +88,8 @@ async function reload() {
 export function getMenuSummaryFor(iso) {
   const slotList = slots().map((s) => {
     const entries = plan.filter((p) => p.plan_date === iso && p.slot === s.key);
-    const names = entries.map((p) => dishFor(p.dish_id)?.name).filter(Boolean);
-    const ids = entries.map((p) => p.dish_id).filter((id) => dishFor(id));
-    return { key: s.key, label: s.label, emoji: s.emoji, dishes: names, ids };
+    const items = entries.map((p) => { const d = dishFor(p.dish_id); return d ? { id: d.id, name: d.name, note: p.note || "" } : null; }).filter(Boolean);
+    return { key: s.key, label: s.label, emoji: s.emoji, dishes: items.map((e) => e.name), ids: items.map((e) => e.id), items };
   });
   const defrost = defrostFor(addDays(iso, 1));
   return { slots: slotList, defrostTomorrow: defrost };
@@ -160,8 +159,15 @@ function renderToday() {
       const editBtn = d.kind !== "restaurant"
         ? `<button class="sd-edit ${custom ? "on" : ""}" data-editplan="${p.id}" title="Adjust ingredients for this day">🧂${custom ? " edited" : ""}</button>`
         : "";
+      // Restaurants: the dish ordered this time, shown under the venue name
+      const noteBtn = d.kind === "restaurant"
+        ? `<button class="sd-note ${p.note ? "on" : ""}" data-noteplan="${p.id}">${p.note ? "🍽️ " + esc(p.note) : "＋ dish"}</button>`
+        : "";
       return `<div class="slot-dish">
-        <span class="sd-name" data-gotodish="${d.id}" role="button" tabindex="0">${esc(d.name)} <span class="sd-go">›</span></span>
+        <div class="sd-main">
+          <span class="sd-name" data-gotodish="${d.id}" role="button" tabindex="0">${esc(d.name)} <span class="sd-go">›</span></span>
+          ${noteBtn}
+        </div>
         ${sideBadge(d)}
         ${editBtn}
         <button class="sd-del" data-delplan="${p.id}">✕</button>
@@ -221,6 +227,8 @@ function renderToday() {
     el.addEventListener("click", () => goToRecipe(el.dataset.gotodish)));
   body.querySelectorAll("[data-editplan]").forEach((b) =>
     b.addEventListener("click", () => openPlanIngredients(b.dataset.editplan)));
+  body.querySelectorAll("[data-noteplan]").forEach((b) =>
+    b.addEventListener("click", () => setPlanNote(b.dataset.noteplan)));
   const amd = $("add-missing-day");
   if (amd) amd.addEventListener("click", () => openRestockPanel("day"));
   const amw = $("add-missing-week");
@@ -532,6 +540,25 @@ async function assignDish(slot, dishId) {
 async function removePlan(id) {
   const { error } = await supabase.from("meal_plan").delete().eq("id", id);
   if (error) { toast("Couldn't delete"); return; }
+  await reload();
+}
+
+// Set the dish ordered for a restaurant meal (this meal only)
+async function setPlanNote(planId) {
+  const p = plan.find((x) => x.id === planId);
+  if (!p) return;
+  const v = prompt("What are you having here this time?", p.note || "");
+  if (v === null) return;
+  const note = v.trim() || null;
+  const { error } = await supabase.from("meal_plan").update({ note }).eq("id", planId);
+  if (error) {
+    console.error(error);
+    toast(/column .*note/i.test(error.message || "")
+      ? "Run schema_menu.sql first (meal_plan.note)"
+      : "Couldn't save: " + (error.message || error.code || "error"));
+    return;
+  }
+  toast(note ? "Saved 🍽️" : "Cleared");
   await reload();
 }
 
