@@ -1,7 +1,7 @@
 import { supabase, isConfigured } from "./supabase.js";
 import { initShopping, teardownShopping } from "./shopping.js";
 import { initStaples, teardownStaples, renderStaples } from "./staples.js";
-import { initMenu, teardownMenu, renderMenu, renderRecipesScreen } from "./menu.js";
+import { initMenu, teardownMenu, renderMenu, renderRecipesScreen, renderTodayScreen } from "./menu.js";
 import { renderCompare } from "./compare.js";
 import { renderAccount, recordMe } from "./account.js";
 import { initSettings, teardownSettings } from "./settings.js";
@@ -13,6 +13,7 @@ const $ = (id) => document.getElementById(id);
 const TABS = [
   { key: "home", label: "Home", emoji: "🏠" },
   { key: "shopping", label: "Shopping", emoji: "🛒", hidden: true },   // reachable from Home, not shown in the bottom bar
+  { key: "today", label: "Today meal", emoji: "🍽️", hidden: true },   // reached from the Home "Today's meals" card
   { key: "menu", label: "Meals", emoji: "🍳" },
   { key: "stock", label: "Stock", emoji: "📦" },
   { key: "recipes", label: "Recipes", emoji: "📖" },
@@ -60,6 +61,7 @@ export function setTab(key) {
     b.classList.toggle("active", b.dataset.key === tab.key));
 
   if (tab.key === "home") renderHome();
+  if (tab.key === "today") renderTodayScreen();
   if (tab.key === "menu") renderMenu();
   if (tab.key === "stock") renderStaples();
   if (tab.key === "recipes") renderRecipesScreen();

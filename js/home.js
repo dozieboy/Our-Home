@@ -1,6 +1,6 @@
 import { getShoppingSummary, getShoppingGroups } from "./shopping.js";
 import { getStaplesSummary } from "./staples.js";
-import { getMenuSummaryFor, goToRecipe } from "./menu.js";
+import { getMenuSummaryFor, goToRecipe, goToTodayMeals } from "./menu.js";
 import { getHomeName } from "./settings.js";
 import { whoami, setTab } from "./app.js";
 
@@ -81,7 +81,7 @@ export function renderHome() {
     <div class="dash-card hm-meal-card">
       <div class="hm-meal-head">
         <button class="hm-day-nav" data-dayoff="-1" aria-label="previous day">‹</button>
-        <button class="hm-day-title" data-go="menu">🍳 ${offsetLabel(homeMealOffset)}'s meals ›</button>
+        <button class="hm-day-title" data-opentoday>🍳 ${offsetLabel(homeMealOffset)}'s meals ›</button>
         <button class="hm-day-nav" data-dayoff="1" aria-label="next day">›</button>
       </div>
       <div class="hm-meals3">${meals3}</div>
@@ -114,11 +114,15 @@ export function renderHome() {
       renderHome();
     }));
 
-  // Tap a meal cell → open that recipe (or the Meals tab if empty)
+  // Tap the day title → open the Today-meal screen on the day shown here
+  const dayTitle = el.querySelector("[data-opentoday]");
+  if (dayTitle) dayTitle.addEventListener("click", () => goToTodayMeals(offsetISO(homeMealOffset)));
+
+  // Tap a meal cell → open that recipe (or the Today-meal screen if empty)
   el.querySelectorAll("[data-mealid]").forEach((c) =>
     c.addEventListener("click", () => {
       const id = c.dataset.mealid;
-      if (id) goToRecipe(id); else setTab("menu");
+      if (id) goToRecipe(id); else goToTodayMeals(offsetISO(homeMealOffset));
     }));
 
   const setDay = (n) => { userPickedDay = true; homeMealOffset = Math.max(-1, Math.min(14, n)); renderHome(); };
