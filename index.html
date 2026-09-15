@@ -105,8 +105,22 @@
   <script type="module" src="./js/app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
+      let refreshing = false;
+      const hadController = !!navigator.serviceWorker.controller;
+      // A new service worker took control → reload to the fresh build (skip the first-install claim)
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing || !hadController) return;
+        refreshing = true;
+        location.reload();
+      });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
+        navigator.serviceWorker.register('./sw.js').then((reg) => {
+          reg.update().catch(() => {});
+          // Re-check for a new version whenever the app is brought back to the foreground
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') reg.update().catch(() => {});
+          });
+        }).catch(() => {});
       });
     }
   </script>
