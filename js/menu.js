@@ -129,18 +129,6 @@ function render() {
   el.innerHTML = `<div id="menu-body"></div>`;
   renderToday();
 }
-// Same Today & plan view, but on its own hidden screen (reached from Home)
-export function renderTodayScreen() {
-  const el = $("screen-today");
-  if (!el) return;
-  el.innerHTML = `<div id="today-body"></div>`;
-  renderToday();
-}
-// Open the Today-meal screen, optionally on a specific date (e.g. tomorrow from Home)
-export function goToTodayMeals(iso) {
-  if (iso) { selectedDate = iso; restockPanel = null; }
-  setTab("today");
-}
 export function renderRecipesScreen() {
   const el = $("screen-recipes");
   if (!el) return;
@@ -151,20 +139,12 @@ export function renderRecipesScreen() {
 function refreshMenuScreens() {
   const menu = $("screen-menu");
   if (menu && !menu.hidden) render();
-  const today = $("screen-today");
-  if (today && !today.hidden) renderTodayScreen();
   const rec = $("screen-recipes");
   if (rec && !rec.hidden) renderRecipesScreen();
 }
-// The visible Today & plan container — the hidden Today-meal screen or the Meals tab
-function todayBody() {
-  const t = $("screen-today");
-  if (t && !t.hidden) return $("today-body");
-  return $("menu-body");
-}
 
 function renderToday() {
-  const body = todayBody();
+  const body = $("menu-body");
   if (!body) return;
   const nextDay = addDays(selectedDate, 1);
 
@@ -782,10 +762,8 @@ export function renderMenu() { render(); }
 
 // Kid meal slot appears/disappears when the household's "has kids" setting changes
 document.addEventListener("settings-changed", () => {
-  const menu = $("screen-menu");
-  if (menu && !menu.hidden) render();
-  const today = $("screen-today");
-  if (today && !today.hidden) renderTodayScreen();
+  const el = $("screen-menu");
+  if (el && !el.hidden) render();
 });
 
 // Stock changed → refresh the Recipes screen so out-of-stock highlights stay current
