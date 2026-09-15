@@ -264,6 +264,7 @@ button.dash-card { cursor: pointer; }
 .tag { background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
 .tag.frozen { background: #e0f2fe; color: #075985; border-color: #bae6fd; }
 .tag.tag-out { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+.acct-version { text-align: center; font-size: 12px; padding: 4px 0 8px; }
 .rb-missing { margin-top: 8px; font-size: 13px; color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 7px 10px; }
 
 .recipe-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }

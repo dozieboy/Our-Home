@@ -1,6 +1,7 @@
 import { supabase } from "./supabase.js";
 import { toast, whoami, setWhoami } from "./app.js";
 import { getHasKids, setHasKids, getHomeName, setHomeName } from "./settings.js";
+import { APP_VERSION } from "./config.js";
 
 const $ = (id) => document.getElementById(id);
 let myEmail = "";
@@ -117,7 +118,9 @@ export async function renderAccount() {
         <button type="submit" class="btn-primary add-btn" id="fam-btn">✉️ Invite</button>
       </form>
       <ul class="item-list">${rows || `<li class="muted acct-empty">No members yet</li>`}</ul>
-    </div>`;
+    </div>
+
+    <div class="acct-version muted">Our Home · v${esc(APP_VERSION)}</div>`;
 
   $("acct-home").addEventListener("click", async () => {
     const n = prompt("Home name (shown top-left):", getHomeName());
