@@ -370,13 +370,13 @@ function shortfallFor(ingredients) {
 }
 
 async function addToShopping(toBuy) {
-  const { data } = await supabase.from("shopping_items").select("name").eq("category", "ingredient");
+  const { data } = await supabase.from("shopping_items").select("name").eq("category", "dry");
   const existing = new Set((data || []).map((r) => norm(r.name)));   // normalized → ignores case/spaces
   let added = 0;
   for (const b of toBuy) {
     if (existing.has(norm(b.name))) continue;   // already on the list (any spacing/case)
     const qty = b.qty ? qtyStr(b.qty, b.unit) : null;
-    const { error } = await supabase.from("shopping_items").insert({ name: b.name, category: "ingredient", qty, created_by: whoami() || null });
+    const { error } = await supabase.from("shopping_items").insert({ name: b.name, category: "dry", qty, created_by: whoami() || null });
     if (!error) { added++; existing.add(norm(b.name)); }
   }
   return added;
@@ -409,7 +409,7 @@ async function openRestockPanel(kind) {
     ? ingredientsInRange(todayISO(), addDays(todayISO(), 6))
     : ingredientsInRange(selectedDate, selectedDate);
   restockItems = shortfallFor(ings);
-  const { data } = await supabase.from("shopping_items").select("name").eq("category", "ingredient");
+  const { data } = await supabase.from("shopping_items").select("name").eq("category", "dry");
   onShoppingList = new Set((data || []).map((r) => norm(r.name)));
   restockPanel = kind;
   renderToday();
@@ -438,7 +438,7 @@ async function restockAddOne(idx) {
   const key = norm(b.name);
   if (onShoppingList.has(key)) return;
   const qty = b.qty ? qtyStr(b.qty, b.unit) : null;
-  const { error } = await supabase.from("shopping_items").insert({ name: b.name, category: "ingredient", qty, created_by: whoami() || null });
+  const { error } = await supabase.from("shopping_items").insert({ name: b.name, category: "dry", qty, created_by: whoami() || null });
   if (error) { toast("Couldn't add"); return; }
   onShoppingList.add(key);
   toast("Added: " + b.name);

@@ -15,11 +15,12 @@ create table if not exists public.shopping_items (
   updated_at  timestamptz not null default now()
 );
 
--- allow the 'ingredient' + 'dry' categories (added later) — safe to re-run
--- 'food' now means Fresh food; 'dry' = Dry food (canned/packaged)
+-- categories: food = Meat & Chilled Food, dry = Dry Goods & Pantry, beverages, household, health.
+-- 'ingredient' was merged into 'dry' — migrate existing rows first, then swap the CHECK. Safe to re-run.
+update public.shopping_items set category = 'dry' where category = 'ingredient';
 alter table public.shopping_items drop constraint if exists shopping_items_category_check;
 alter table public.shopping_items add constraint shopping_items_category_check
-  check (category in ('food','dry','ingredient','household','health'));
+  check (category in ('food','dry','beverages','household','health'));
 
 -- อัปเดต updated_at อัตโนมัติทุกครั้งที่แก้
 create or replace function public.set_updated_at()

@@ -17,11 +17,12 @@ create table if not exists public.staples (
 alter table public.staples add column if not exists qty_g numeric;
 alter table public.staples add column if not exists unit text not null default 'g';
 
--- allow the 'ingredient' + 'dry' categories (added later) — safe to re-run
--- 'food' now means Fresh food; 'dry' = Dry food (canned/packaged)
+-- categories: food = Meat & Chilled Food, dry = Dry Goods & Pantry, beverages, household, health.
+-- 'ingredient' was merged into 'dry' — migrate existing rows first, then swap the CHECK. Safe to re-run.
+update public.staples set category = 'dry' where category = 'ingredient';
 alter table public.staples drop constraint if exists staples_category_check;
 alter table public.staples add constraint staples_category_check
-  check (category in ('food','dry','ingredient','household','health'));
+  check (category in ('food','dry','beverages','household','health'));
 
 drop trigger if exists trg_staples_updated on public.staples;
 create trigger trg_staples_updated

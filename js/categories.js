@@ -2,12 +2,13 @@
 // so the two always show exactly the same set. Keep keys in sync with the DB
 // CHECK constraints (schema.sql shopping_items, schema_staples.sql staples).
 export const CATEGORIES = [
-  { key: "food", emoji: "🥩", label: "Fresh food" },
-  { key: "dry", emoji: "🥫", label: "Dry food" },
-  { key: "ingredient", emoji: "🥕", label: "Ingredient" },
+  { key: "food", emoji: "🥩", label: "Meat & Chilled Food" },
+  { key: "dry", emoji: "🥫", label: "Dry Goods & Pantry" },
+  { key: "beverages", emoji: "🥤", label: "Beverages" },
   { key: "household", emoji: "🏠", label: "Household" },
   { key: "health", emoji: "💊", label: "Health" },
 ];
+// 'ingredient' was merged into 'dry' (Dry Goods & Pantry) — see schema migration.
 
 // "🥩 Fresh food" for a key
 export const catLabel = (key) => {
