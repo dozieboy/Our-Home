@@ -22,7 +22,7 @@ alter table public.staples add column if not exists unit text not null default '
 update public.staples set category = 'dry' where category = 'ingredient';
 alter table public.staples drop constraint if exists staples_category_check;
 alter table public.staples add constraint staples_category_check
-  check (category in ('food','dry','beverages','household','health'));
+  check (category in ('food','dry','beverages','snacks','household','health'));
 
 drop trigger if exists trg_staples_updated on public.staples;
 create trigger trg_staples_updated

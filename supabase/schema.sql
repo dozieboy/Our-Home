@@ -20,7 +20,7 @@ create table if not exists public.shopping_items (
 update public.shopping_items set category = 'dry' where category = 'ingredient';
 alter table public.shopping_items drop constraint if exists shopping_items_category_check;
 alter table public.shopping_items add constraint shopping_items_category_check
-  check (category in ('food','dry','beverages','household','health'));
+  check (category in ('food','dry','beverages','snacks','household','health'));
 
 -- อัปเดต updated_at อัตโนมัติทุกครั้งที่แก้
 create or replace function public.set_updated_at()

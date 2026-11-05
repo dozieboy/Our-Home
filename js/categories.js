@@ -5,6 +5,7 @@ export const CATEGORIES = [
   { key: "food", emoji: "🥩", label: "Meat & Chilled Food" },
   { key: "dry", emoji: "🥫", label: "Dry Goods & Pantry" },
   { key: "beverages", emoji: "🥤", label: "Beverages" },
+  { key: "snacks", emoji: "🍪", label: "Snacks" },
   { key: "household", emoji: "🏠", label: "Household" },
   { key: "health", emoji: "💊", label: "Health" },
 ];
