@@ -36,6 +36,8 @@ let channels = [];
 let recipeSearch = "";          // filter text for the Recipes list
 let recipeTagFilter = "";       // "" | breakfast | lunch | dinner
 let showRestaurants = false;    // Recipes list hides restaurants until this is ticked
+let recipeIngFilter = "";       // normalized ingredient name to filter recipes by ("" = all)
+let ingFilterOpen = false;      // whether the "By ingredient" chip panel is expanded
 let restockPanel = null;        // null | 'day' | 'week' — which restock preview is expanded
 let restockItems = [];          // shortfall items for the open panel
 let onShoppingList = new Set();  // lowercased names already on the shopping list
@@ -255,13 +257,14 @@ function renderRecipes() {
     const open = expandedDish === d.id;
     const steps = (d.steps || "").split("\n").map((s) => s.trim()).filter(Boolean);
     const tags = d.meal_tags || [];
+    const ingKeys = (d.ingredients || []).map((i) => norm(i.name)).filter(Boolean);
     // Ingredients not currently in stock (for the red tags + a "Missing" summary line)
     const missing = isRest ? [] : (d.ingredients || []).filter((i) => {
       if (!i.name) return false;
       const st = getStockByName(i.name);
       return !st || !st.in_stock;
     }).map((i) => i.name);
-    return `<div class="recipe ${open ? "open" : ""}" data-rn="${esc(d.name.toLowerCase())}" data-tags="${esc(tags.join(" "))}" data-rest="${isRest ? 1 : 0}">
+    return `<div class="recipe ${open ? "open" : ""}" data-rn="${esc(d.name.toLowerCase())}" data-tags="${esc(tags.join(" "))}" data-rest="${isRest ? 1 : 0}" data-ings="${esc(ingKeys.join("|"))}">
       <div class="recipe-head" data-expand="${d.id}">
         <div>
           <div class="recipe-name">${esc(d.name)}</div>
@@ -305,28 +308,43 @@ function renderRecipes() {
     ${BASE_SLOTS.map((s) => `<button class="rfilter ${recipeTagFilter === s.key ? "active" : ""}" data-rfilter="${s.key}">${s.emoji} ${s.label}</button>`).join("")}
   </div>`;
 
+  // Distinct ingredients used across cook recipes → "By ingredient" filter chips
+  const ingMap = new Map();   // norm(name) → display name
+  dishes.forEach((d) => { if (d.kind !== "restaurant") (d.ingredients || []).forEach((i) => { const k = norm(i.name); if (k && !ingMap.has(k)) ingMap.set(k, (i.name || "").trim()); }); });
+  const ingNames = [...ingMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));   // [key, name]
+  const activeIngName = recipeIngFilter ? (ingMap.get(recipeIngFilter) || "") : "";
+  const ingFilter = ingMap.size ? `<div class="recipe-ingfilter">
+    <button class="ingfilter-toggle" id="ingfilter-toggle">🥕 By ingredient${activeIngName ? ` · <b>${esc(activeIngName)}</b>` : ""} <span class="caret">${ingFilterOpen ? "▾" : "▸"}</span></button>
+    ${ingFilterOpen ? `<div class="ingfilter-chips">
+      <button class="ingchip ${!recipeIngFilter ? "active" : ""}" data-ing="">All</button>
+      ${ingNames.map(([k, n]) => `<button class="ingchip ${recipeIngFilter === k ? "active" : ""}" data-ing="${esc(k)}">${esc(n)}</button>`).join("")}
+    </div>` : ""}
+  </div>` : "";
+
   body.innerHTML = `
     <button class="btn-primary full" id="add-recipe">＋ Add recipe</button>
     <button class="btn-secondary full" id="add-restaurant">🍽️ ＋ Add restaurant</button>
     ${dishes.length ? `<input type="search" id="recipe-search" class="search-box" placeholder="🔎 Search saved recipes…" value="${esc(recipeSearch)}">${filterChips}
-      <label class="show-rest"><input type="checkbox" id="show-rest" ${showRestaurants ? "checked" : ""}> 🍽️ Show restaurants</label>` : ""}
+      <label class="show-rest"><input type="checkbox" id="show-rest" ${showRestaurants ? "checked" : ""}> 🍽️ Show restaurants</label>${ingFilter}` : ""}
     ${dishes.length ? `<div class="recipe-list">${list}</div><p class="empty" id="recipe-none" hidden>No recipe matches your filter</p>`
       : `<p class="empty">No recipes yet — add your first 📖</p>`}`;
 
   const applyRecipeFilter = () => {
     const q = recipeSearch.trim().toLowerCase();
     const tf = recipeTagFilter;
+    const inf = recipeIngFilter;
     let shown = 0;
     body.querySelectorAll(".recipe").forEach((r) => {
       const okText = !q || (r.dataset.rn || "").includes(q);
       const okTag = !tf || (r.dataset.tags || "").split(" ").includes(tf);
       const okRest = showRestaurants || r.dataset.rest !== "1";   // restaurants hidden unless ticked
-      const hit = okText && okTag && okRest;
+      const okIng = !inf || (r.dataset.ings || "").split("|").includes(inf);   // only recipes using this ingredient
+      const hit = okText && okTag && okRest && okIng;
       r.hidden = !hit;
       if (hit) shown++;
     });
     const none = $("recipe-none");
-    if (none) none.hidden = !((q || tf) && shown === 0);
+    if (none) none.hidden = !((q || tf || inf) && shown === 0);
   };
 
   $("add-recipe").addEventListener("click", () => openDishForm(null));
@@ -337,6 +355,10 @@ function renderRecipes() {
   if (rs) rs.addEventListener("input", () => { recipeSearch = rs.value; applyRecipeFilter(); });
   body.querySelectorAll("[data-rfilter]").forEach((b) =>
     b.addEventListener("click", () => { recipeTagFilter = b.dataset.rfilter; renderRecipes(); }));
+  const ingToggle = $("ingfilter-toggle");
+  if (ingToggle) ingToggle.addEventListener("click", () => { ingFilterOpen = !ingFilterOpen; renderRecipes(); });
+  body.querySelectorAll("[data-ing]").forEach((b) =>
+    b.addEventListener("click", () => { recipeIngFilter = b.dataset.ing; renderRecipes(); }));
   applyRecipeFilter();
   body.querySelectorAll("[data-expand]").forEach((b) =>
     b.addEventListener("click", () => { const id = b.dataset.expand; expandedDish = expandedDish === id ? null : id; renderRecipes(); }));
@@ -813,5 +835,6 @@ export function teardownMenu() {
   dishes = []; plan = [];
   restockPanel = null; restockItems = []; onShoppingList = new Set();
   recipeSearch = ""; recipeTagFilter = ""; showRestaurants = false;
+  recipeIngFilter = ""; ingFilterOpen = false;
   closeSheet();
 }

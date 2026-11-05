@@ -374,6 +374,12 @@ button.dash-card { cursor: pointer; }
 .recipe-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .rfilter { border: 1px solid var(--border); background: var(--card); color: var(--muted); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-family: inherit; cursor: pointer; white-space: nowrap; }
 .rfilter.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
+.recipe-ingfilter { margin-bottom: 12px; }
+.ingfilter-toggle { display: flex; align-items: center; gap: 6px; width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: inherit; font-size: 13px; padding: 8px 12px; cursor: pointer; }
+.ingfilter-toggle .caret { margin-left: auto; color: var(--muted); }
+.ingfilter-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; max-height: 190px; overflow-y: auto; }
+.ingchip { border: 1px solid var(--border); background: var(--card); color: var(--muted); border-radius: 999px; padding: 5px 11px; font-size: 12.5px; font-family: inherit; cursor: pointer; white-space: nowrap; }
+.ingchip.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
 .recipe-tags { font-size: 13px; }
 .meal-badge { font-size: 16px; white-space: nowrap; flex: 0 0 auto; }
 .picker-showall { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin: -2px 0 10px; cursor: pointer; }
