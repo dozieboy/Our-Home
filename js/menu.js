@@ -485,6 +485,12 @@ export function getRecipesUsingIngredient(name) {
     .map((d) => ({ id: d.id, name: d.name }));
 }
 
+// Open the Meals tab on a specific day (e.g. the day the Home card is showing)
+export function goToMeals(iso) {
+  if (iso) { selectedDate = iso; restockPanel = null; }
+  setTab("menu");
+}
+
 // Jump from a planned meal straight to its recipe (Recipes tab, expanded)
 export function goToRecipe(dishId) {
   if (!dishFor(dishId)) return;
