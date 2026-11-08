@@ -50,7 +50,7 @@ async function addItem(name, category, qty) {
   render();
 }
 
-const parseQty = (q) => { const m = /(\d+(?:\.\d+)?)\s*(ea|g)\b/i.exec(q || ""); return m ? { qty: parseFloat(m[1]), unit: m[2].toLowerCase() } : null; };
+const parseQty = (q) => { const m = /(\d+(?:\.\d+)?)\s*(sz|ea|g)?\b/i.exec(q || ""); return m ? { qty: parseFloat(m[1]) } : null; };
 
 // ── Tick = bought → into stock as in-stock, leaves the list ──
 async function buyItem(id) {
@@ -58,7 +58,7 @@ async function buyItem(id) {
   if (!it || String(id).startsWith("tmp-")) return;
   items = items.filter((x) => x.id !== id); render();          // optimistic remove
   const pq = parseQty(it.qty);
-  await markInStockByNameCat(it.name, it.category, pq ? pq.qty : 0, pq ? pq.unit : "g");   // stock → in stock (+qty/unit)
+  await markInStockByNameCat(it.name, it.category, pq ? pq.qty : 0);   // stock → in stock (+qty)
   const { error } = await supabase.from("shopping_items").delete().eq("id", id);
   if (error) { toast("Something went wrong"); await loadItems(); return; }
   toast("Bought → stock: " + it.name);

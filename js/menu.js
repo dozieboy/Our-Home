@@ -61,16 +61,16 @@ const dishFor = (id) => dishes.find((d) => d.id === id);
 // A planned meal's effective ingredients — its per-day override if set, else the recipe's
 const planIngs = (p) => (Array.isArray(p.ingredients) ? p.ingredients : (dishFor(p.dish_id)?.ingredients || []));
 
-// Quantity helpers — unit is 'g' (grams) or 'ea' (each). Reads legacy `grams` too.
+// Quantity helpers — the only unit now is 'sz' (pieces). Reads legacy `grams`/`qty` too.
 function ingQty(i) {
   const q = i.qty != null ? i.qty : (i.grams != null ? i.grams : null);
-  return { qty: q != null ? Number(q) : null, unit: i.unit === "ea" ? "ea" : "g" };
+  return { qty: q != null ? Number(q) : null, unit: "ea" };
 }
-const unitLabel = (u) => (u === "ea" ? "sz" : "g");
+const unitLabel = (u) => "sz";
 // Normalized key for name matching: trim, lowercase, drop all whitespace
 const norm = (s) => (s || "").trim().toLowerCase().replace(/\s+/g, "");
-const qtyTag = (qty, unit) => `${qty}${unit === "ea" ? " sz" : "g"}`;       // compact tag, e.g. 2 sz / 500g
-const qtyStr = (qty, unit) => `${Math.round(Number(qty))} ${unitLabel(unit)}`; // shopping qty, e.g. 2 EA / 150 g
+const qtyTag = (qty) => `${qty} sz`;                               // compact tag, e.g. 2 sz
+const qtyStr = (qty) => `${Math.round(Number(qty))} sz`;          // shopping qty, e.g. 2 sz
 
 // ── Load ────────────────────────────────────────────
 async function reload() {
@@ -381,11 +381,11 @@ function shortfallFor(ingredients) {
     if (seen.has(key)) continue;   // dedup across dishes
     seen.add(key);
     const st = getStockByName(ing.name);
-    const { qty: need, unit } = ingQty(ing);
+    const { qty: need } = ingQty(ing);
     if (!st || !st.in_stock) {
-      toBuy.push({ name: ing.name, qty: need || null, unit });                 // not in stock at all
-    } else if (need && st.qty_g != null && (st.unit || "g") === unit && Number(st.qty_g) < need) {
-      toBuy.push({ name: ing.name, qty: need - Number(st.qty_g), unit });      // in stock but not enough (same unit)
+      toBuy.push({ name: ing.name, qty: need || null });                       // not in stock at all
+    } else if (need && st.qty_g != null && Number(st.qty_g) < need) {
+      toBuy.push({ name: ing.name, qty: need - Number(st.qty_g) });            // in stock but not enough
     }
   }
   return toBuy;
@@ -610,21 +610,20 @@ function openPlanIngredients(planId) {
   openSheet("Adjust meal ingredients", form);
 
   const box = form.querySelector("#pl-ings");
-  const addRow = (name = "", qty = "", unit = "g", defrost = false) => {
+  const addRow = (name = "", qty = "", defrost = false) => {
     const row = document.createElement("div");
     row.className = "ing-row";
     row.innerHTML = `
       <input type="text" class="ing-name" list="pl-stock" autocomplete="off" placeholder="Ingredient" value="${esc(name)}">
-      <input type="number" class="ing-g" placeholder="qty" min="0" inputmode="decimal" value="${qty != null ? qty : ""}">
-      <select class="ing-unit"><option value="g">g</option><option value="ea">sz</option></select>
+      <input type="number" class="ing-g" placeholder="sz" min="0" inputmode="numeric" value="${qty != null ? qty : ""}">
+      <span class="ing-unit-fix">sz</span>
       <label class="ing-frost"><input type="checkbox" class="ing-defrost" ${defrost ? "checked" : ""}> 🧊</label>
       <button type="button" class="ing-del">✕</button>`;
-    row.querySelector(".ing-unit").value = unit === "ea" ? "ea" : "g";
     row.querySelector(".ing-del").addEventListener("click", () => row.remove());
     box.appendChild(row);
     return row;
   };
-  (current.length ? current : [{ name: "" }]).forEach((i) => { const { qty, unit } = ingQty(i); addRow(i.name, qty != null ? qty : "", unit, i.defrost); });
+  (current.length ? current : [{ name: "" }]).forEach((i) => { const { qty } = ingQty(i); addRow(i.name, qty != null ? qty : "", i.defrost); });
   form.querySelector("#pl-add-ing").addEventListener("click", () => addRow());
   form.querySelector("#pl-save").addEventListener("click", () => savePlanIngredients(planId, form));
   const reset = form.querySelector("#pl-reset");
@@ -640,7 +639,7 @@ async function savePlanIngredients(planId, form) {
       return {
         name: r.querySelector(".ing-name").value.trim(),
         qty: q > 0 ? q : null,
-        unit: r.querySelector(".ing-unit").value === "ea" ? "ea" : "g",
+        unit: "ea",
         defrost: r.querySelector(".ing-defrost").checked,
       };
     }).filter((i) => i.name);
@@ -712,7 +711,7 @@ function openDishForm(dishId, initialKind) {
   // Ingredient suggestions dropdown — stock items first, then names used before.
   let suggestBox = null, hideTimer = null;
   const hideSuggest = () => { if (suggestBox) { suggestBox.remove(); suggestBox = null; } };
-  const stockTag = (s) => s.in_stock ? (s.qty_g != null ? `${s.qty_g}${s.unit === "ea" ? " sz" : " g"}` : "have") : "out";
+  const stockTag = (s) => s.in_stock ? (s.qty_g != null ? `${s.qty_g} sz` : "have") : "out";
   function showSuggest(input) {
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }   // cancel a pending hide (row-to-row focus)
     const q = norm(input.value);
@@ -732,16 +731,15 @@ function openDishForm(dishId, initialKind) {
   }
 
   const ingBox = form.querySelector("#df-ings");
-  const addIngRow = (name = "", defrost = false, qty = "", unit = "g") => {
+  const addIngRow = (name = "", defrost = false, qty = "") => {
     const row = document.createElement("div");
     row.className = "ing-row";
     row.innerHTML = `
       <input type="text" class="ing-name" autocomplete="off" placeholder="Ingredient" value="${esc(name)}">
-      <input type="number" class="ing-g" placeholder="qty" min="0" inputmode="decimal" value="${qty != null ? qty : ""}">
-      <select class="ing-unit"><option value="g">g</option><option value="ea">sz</option></select>
+      <input type="number" class="ing-g" placeholder="sz" min="0" inputmode="numeric" value="${qty != null ? qty : ""}">
+      <span class="ing-unit-fix">sz</span>
       <label class="ing-frost"><input type="checkbox" class="ing-defrost" ${defrost ? "checked" : ""}> 🧊</label>
       <button type="button" class="ing-del">✕</button>`;
-    row.querySelector(".ing-unit").value = unit === "ea" ? "ea" : "g";
     row.querySelector(".ing-del").addEventListener("click", () => { hideSuggest(); row.remove(); });
     const nm = row.querySelector(".ing-name");
     nm.addEventListener("input", () => showSuggest(nm));
@@ -758,8 +756,8 @@ function openDishForm(dishId, initialKind) {
     return row;
   };
   (d?.ingredients?.length ? d.ingredients : [{ name: "", defrost: false }]).forEach((i) => {
-    const { qty, unit } = ingQty(i);
-    addIngRow(i.name, i.defrost, qty != null ? qty : "", unit);
+    const { qty } = ingQty(i);
+    addIngRow(i.name, i.defrost, qty != null ? qty : "");
   });
   form.querySelector("#df-add-ing").addEventListener("click", () => addIngRow());
 
@@ -777,7 +775,7 @@ async function saveDish(dishId, form) {
     return {
       name: r.querySelector(".ing-name").value.trim(),
       qty: q > 0 ? q : null,
-      unit: r.querySelector(".ing-unit").value === "ea" ? "ea" : "g",
+      unit: "ea",
       defrost: r.querySelector(".ing-defrost").checked,
     };
   }).filter((i) => i.name);

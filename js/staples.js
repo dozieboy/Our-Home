@@ -34,7 +34,7 @@ export function getStaplesSummary() {
 }
 
 async function addStaple(name, category, qty, unit) {
-  const { error } = await supabase.from("staples").insert({ name, category, qty_g: qty || null, unit: unit || "g", created_by: whoami() || null });
+  const { error } = await supabase.from("staples").insert({ name, category, qty_g: qty || null, unit: "ea", created_by: whoami() || null });
   if (error) {
     console.error(error);
     toast(/column .*(unit|qty_g)|check|constraint|23514/i.test((error.message || "") + (error.code || ""))
@@ -47,7 +47,7 @@ async function addStaple(name, category, qty, unit) {
 async function setQty(id) {
   const s = staples.find((x) => x.id === id);
   if (!s) return;
-  const label = (s.unit === "ea" ? "sz" : "g");
+  const label = "sz";
   const v = prompt(`Quantity in stock (${label}) — leave empty to clear:`, s.qty_g != null ? s.qty_g : "");
   if (v === null) return;
   const t = String(v).trim();
@@ -56,8 +56,8 @@ async function setQty(id) {
   const { error } = await supabase.from("staples").update({ qty_g: g }).eq("id", id);
   if (error) { toast("Couldn't update"); await reload(); }
 }
-const stockLabel = (s) => s.qty_g != null ? `${s.qty_g}${s.unit === "ea" ? " sz" : " g"}` : "";
-const stepFor = (s) => (s.unit === "ea" ? 1 : 50);   // +/- step: 1 per piece, 50 g
+const stockLabel = (s) => s.qty_g != null ? `${s.qty_g} sz` : "";
+const stepFor = (s) => 1;   // +/- step: 1 per piece (sz)
 
 async function adjustQty(id, dir) {
   const s = staples.find((x) => x.id === id);
@@ -168,25 +168,17 @@ async function addAllOutToShopping() {
   toast(n ? `Added ${n} to list` : "Already on the list");
 }
 // Called from shopping.js: bought → stock as in-stock (update existing / create new).
-// addG (optional grams, e.g. parsed from "200 g") gets added onto the on-hand amount.
-export async function markInStockByNameCat(name, category, addQty, addUnit) {
+// addQty (optional pieces, e.g. parsed from "2 sz") gets added onto the on-hand amount.
+export async function markInStockByNameCat(name, category, addQty) {
   const key = (name || "").trim();
   if (!key) return;
-  const u = addUnit === "ea" ? "ea" : "g";
   const existing = staples.find((s) => norm(s.name) === norm(key) && s.category === category);
   if (existing) {
     const patch = { in_stock: true };
-    if (addQty) {
-      const eu = existing.unit || "g";
-      if (existing.qty_g == null || eu === u) {            // same unit (or none yet) → add on
-        patch.qty_g = (Number(existing.qty_g) || 0) + addQty;
-        patch.unit = existing.qty_g == null ? u : eu;
-      }
-      // different unit with an existing amount → just mark in stock, don't merge mismatched units
-    }
+    if (addQty) patch.qty_g = (Number(existing.qty_g) || 0) + addQty;   // everything is sz now → just add
     await supabase.from("staples").update(patch).eq("id", existing.id);
   } else {
-    await supabase.from("staples").insert({ name: key, category, in_stock: true, qty_g: addQty || null, unit: u, created_by: whoami() || null });
+    await supabase.from("staples").insert({ name: key, category, in_stock: true, qty_g: addQty || null, unit: "ea", created_by: whoami() || null });
   }
   await reload();
 }
@@ -230,8 +222,7 @@ function render() {
       <input type="text" id="staple-name" placeholder="Add a staple… (e.g. Dish soap)" required />
       <div class="add-row">
         <select id="staple-cat">${catOptions("food")}</select>
-        <input type="number" id="staple-g" class="staple-g" placeholder="qty" min="0" inputmode="decimal" />
-        <select id="staple-unit" class="staple-unit"><option value="g">g</option><option value="ea">sz</option></select>
+        <input type="number" id="staple-g" class="staple-g" placeholder="sz" min="0" inputmode="numeric" />
         <button type="submit" class="btn-primary add-btn">＋ Add</button>
       </div>
     </form>
@@ -258,16 +249,11 @@ function render() {
     const n = $("staple-name").value.trim();
     if (!n) return;
     const g = parseFloat($("staple-g").value);
-    addStaple(n, $("staple-cat").value, g > 0 ? g : null, $("staple-unit").value);
+    addStaple(n, $("staple-cat").value, g > 0 ? g : null, "ea");
     $("staple-name").value = "";
     $("staple-g").value = "";
     $("staple-name").focus();
   });
-  // Default unit by category: Fresh food → g, everything else → sz
-  const catSel = $("staple-cat"), unitSel = $("staple-unit");
-  const syncUnitDefault = () => { unitSel.value = catSel.value === "food" ? "g" : "ea"; };
-  catSel.addEventListener("change", syncUnitDefault);
-  syncUnitDefault();
   el.querySelectorAll("[data-setg]").forEach((b) =>
     b.addEventListener("click", () => setQty(b.dataset.setg)));
   el.querySelectorAll("[data-qadj]").forEach((b) =>
