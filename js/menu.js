@@ -36,8 +36,10 @@ let channels = [];
 let recipeSearch = "";          // filter text for the Recipes list
 let recipeTagFilter = "";       // "" | breakfast | lunch | dinner
 let showRestaurants = false;    // Recipes list hides restaurants until this is ticked
-let recipeIngFilter = "";       // normalized ingredient name to filter recipes by ("" = all)
+let recipeIngFilter = "";       // normalized ingredient keyword to filter recipes by ("" = all)
 let ingFilterOpen = false;      // whether the "By ingredient" chip panel is expanded
+// Fixed keyword set for the Recipes "By ingredient" filter (only those present in recipes show)
+const ING_FILTERS = ["Chicken", "Pork", "Beef", "Fish", "Salmon", "Egg"];
 let restockPanel = null;        // null | 'day' | 'week' — which restock preview is expanded
 let restockItems = [];          // shortfall items for the open panel
 let onShoppingList = new Set();  // lowercased names already on the shopping list
@@ -308,16 +310,17 @@ function renderRecipes() {
     ${BASE_SLOTS.map((s) => `<button class="rfilter ${recipeTagFilter === s.key ? "active" : ""}" data-rfilter="${s.key}">${s.emoji} ${s.label}</button>`).join("")}
   </div>`;
 
-  // Distinct ingredients used across cook recipes → "By ingredient" filter chips
-  const ingMap = new Map();   // norm(name) → display name
-  dishes.forEach((d) => { if (d.kind !== "restaurant") (d.ingredients || []).forEach((i) => { const k = norm(i.name); if (k && !ingMap.has(k)) ingMap.set(k, (i.name || "").trim()); }); });
-  const ingNames = [...ingMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));   // [key, name]
-  const activeIngName = recipeIngFilter ? (ingMap.get(recipeIngFilter) || "") : "";
-  const ingFilter = ingMap.size ? `<div class="recipe-ingfilter">
-    <button class="ingfilter-toggle" id="ingfilter-toggle">🥕 By ingredient${activeIngName ? ` · <b>${esc(activeIngName)}</b>` : ""} <span class="caret">${ingFilterOpen ? "▾" : "▸"}</span></button>
+  // "By ingredient" filter: a fixed keyword set, showing only the ones that appear in some recipe
+  const presentFilters = ING_FILTERS.filter((kw) => {
+    const k = norm(kw);
+    return dishes.some((d) => d.kind !== "restaurant" && (d.ingredients || []).some((i) => norm(i.name).includes(k)));
+  });
+  const activeIngLabel = recipeIngFilter ? (ING_FILTERS.find((kw) => norm(kw) === recipeIngFilter) || "") : "";
+  const ingFilter = presentFilters.length ? `<div class="recipe-ingfilter">
+    <button class="ingfilter-toggle" id="ingfilter-toggle">🥕 By ingredient${activeIngLabel ? ` · <b>${esc(activeIngLabel)}</b>` : ""} <span class="caret">${ingFilterOpen ? "▾" : "▸"}</span></button>
     ${ingFilterOpen ? `<div class="ingfilter-chips">
       <button class="ingchip ${!recipeIngFilter ? "active" : ""}" data-ing="">All</button>
-      ${ingNames.map(([k, n]) => `<button class="ingchip ${recipeIngFilter === k ? "active" : ""}" data-ing="${esc(k)}">${esc(n)}</button>`).join("")}
+      ${presentFilters.map((kw) => `<button class="ingchip ${recipeIngFilter === norm(kw) ? "active" : ""}" data-ing="${esc(norm(kw))}">${esc(kw)}</button>`).join("")}
     </div>` : ""}
   </div>` : "";
 
@@ -338,7 +341,7 @@ function renderRecipes() {
       const okText = !q || (r.dataset.rn || "").includes(q);
       const okTag = !tf || (r.dataset.tags || "").split(" ").includes(tf);
       const okRest = showRestaurants || r.dataset.rest !== "1";   // restaurants hidden unless ticked
-      const okIng = !inf || (r.dataset.ings || "").split("|").includes(inf);   // only recipes using this ingredient
+      const okIng = !inf || (r.dataset.ings || "").includes(inf);   // ingredient keyword appears (substring)
       const hit = okText && okTag && okRest && okIng;
       r.hidden = !hit;
       if (hit) shown++;
