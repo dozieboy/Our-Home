@@ -96,39 +96,32 @@ function buildPlaceholders() {
   }
 }
 
-// ── Login (with optional "Remember me" on this device) ──
-const REMEMBER_KEY = "baanrao-remember";
-function saveRemember(email, password) {
-  try { localStorage.setItem(REMEMBER_KEY, btoa(unescape(encodeURIComponent(JSON.stringify({ email, password }))))); } catch {}
-}
-function loadRemember() {
-  try { const v = localStorage.getItem(REMEMBER_KEY); return v ? JSON.parse(decodeURIComponent(escape(atob(v)))) : null; } catch { return null; }
-}
-function clearRemember() { try { localStorage.removeItem(REMEMBER_KEY); } catch {} }
+// ── Login — passwordless: email a one-tap sign-in link (magic link) ──
+const EMAIL_KEY = "baanrao-email";   // remember just the email on this device (no password)
 
 function initLoginForm() {
-  const saved = loadRemember();
-  if (saved) {
-    $("login-email").value = saved.email || "";
-    $("login-password").value = saved.password || "";
-    $("login-remember").checked = true;
-  }
+  try { const e = localStorage.getItem(EMAIL_KEY); if (e) $("login-email").value = e; } catch {}
   $("login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const btn = $("login-btn"), err = $("login-error");
+    const btn = $("login-btn"), err = $("login-error"), sent = $("login-sent");
     const email = $("login-email").value.trim();
-    const password = $("login-password").value;
-    const remember = $("login-remember").checked;
-    err.hidden = true;
-    btn.disabled = true; btn.textContent = "Signing in…";
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    btn.disabled = false; btn.textContent = "Sign in";
+    if (!email) return;
+    err.hidden = true; sent.hidden = true;
+    btn.disabled = true; btn.textContent = "Sending…";
+    const redirect = location.origin + location.pathname;
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirect, shouldCreateUser: true },
+    });
+    btn.disabled = false; btn.textContent = "✉️ Send me a sign-in link";
     if (error) {
-      err.textContent = "Sign in failed: " + (error.message || "check your email / password");
+      err.textContent = "Couldn't send the link: " + (error.message || "try again");
       err.hidden = false;
       return;
     }
-    if (remember) saveRemember(email, password); else clearRemember();
+    try { localStorage.setItem(EMAIL_KEY, email); } catch {}
+    sent.textContent = "✅ Link sent to " + email + ". Open it on this device to sign in.";
+    sent.hidden = false;
   });
 }
 
