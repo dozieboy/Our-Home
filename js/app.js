@@ -101,6 +101,8 @@ const EMAIL_KEY = "baanrao-email";   // remember just the email on this device (
 
 function initLoginForm() {
   try { const e = localStorage.getItem(EMAIL_KEY); if (e) $("login-email").value = e; } catch {}
+
+  // Step 1 — email the 6-digit code
   $("login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = $("login-btn"), err = $("login-error"), sent = $("login-sent");
@@ -113,18 +115,38 @@ function initLoginForm() {
       email,
       options: { emailRedirectTo: redirect, shouldCreateUser: false },   // invite-only: existing members only
     });
-    btn.disabled = false; btn.textContent = "✉️ Send me a sign-in link";
+    btn.disabled = false; btn.textContent = "✉️ Send me a code";
     if (error) {
       const m = (error.message || "").toLowerCase();
       err.textContent = /signup|not allowed|not found|disabled/.test(m)
         ? "This email isn't invited yet — ask the home owner to add you in Account › Add Family."
-        : "Couldn't send the link: " + (error.message || "try again");
+        : "Couldn't send the code: " + (error.message || "try again");
       err.hidden = false;
       return;
     }
     try { localStorage.setItem(EMAIL_KEY, email); } catch {}
-    sent.textContent = "✅ Link sent to " + email + ". Open it on this device to sign in.";
+    $("login-code-box").hidden = false;                 // reveal the code field
+    sent.textContent = "✅ We emailed a 6-digit code to " + email + ". Enter it here to sign in.";
     sent.hidden = false;
+    $("login-code").focus();
+  });
+
+  // Step 2 — verify the code typed into THIS app (works inside an installed PWA)
+  $("login-verify").addEventListener("click", async () => {
+    const vbtn = $("login-verify"), err = $("login-error");
+    const email = $("login-email").value.trim();
+    const token = $("login-code").value.trim();
+    if (!email || !token) return;
+    err.hidden = true;
+    vbtn.disabled = true; vbtn.textContent = "Signing in…";
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+    vbtn.disabled = false; vbtn.textContent = "Sign in";
+    if (error) {
+      err.textContent = "Wrong or expired code — check the email or send a new one.";
+      err.hidden = false;
+      return;
+    }
+    // success → onAuthStateChange(applySession) switches to the app view
   });
 }
 
@@ -152,7 +174,13 @@ async function boot() {
   initLoginForm();
   initAppChrome();
 
-  const { data: { session } } = await supabase.auth.getSession();
+  // No login screen: open straight into the app via an anonymous session.
+  let { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    const { data, error } = await supabase.auth.signInAnonymously();
+    if (error) console.error("anon sign-in:", error);   // (enable Anonymous sign-ins in Supabase)
+    session = data?.session || null;
+  }
   await applySession(session);
   supabase.auth.onAuthStateChange((_e, s) => applySession(s));
 }

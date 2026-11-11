@@ -80,6 +80,8 @@ form input:focus, form select:focus { outline: 2px solid var(--primary); border-
 .btn-primary:disabled { opacity: .6; cursor: default; }
 .error { color: var(--danger); font-size: 14px; margin-top: 10px; text-align: center; }
 .login-sent { color: #166534; background: #dcfce7; border: 1px solid #bbf7d0; border-radius: 10px; font-size: 14px; margin-top: 12px; padding: 10px 12px; text-align: center; }
+#login-code-box { margin-top: 12px; }
+#login-code { letter-spacing: 4px; text-align: center; font-size: 20px; }
 
 /* ===== App header ===== */
 .app-header {
