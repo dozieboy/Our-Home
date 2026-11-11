@@ -111,11 +111,14 @@ function initLoginForm() {
     const redirect = location.origin + location.pathname;
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: redirect, shouldCreateUser: true },
+      options: { emailRedirectTo: redirect, shouldCreateUser: false },   // invite-only: existing members only
     });
     btn.disabled = false; btn.textContent = "✉️ Send me a sign-in link";
     if (error) {
-      err.textContent = "Couldn't send the link: " + (error.message || "try again");
+      const m = (error.message || "").toLowerCase();
+      err.textContent = /signup|not allowed|not found|disabled/.test(m)
+        ? "This email isn't invited yet — ask the home owner to add you in Account › Add Family."
+        : "Couldn't send the link: " + (error.message || "try again");
       err.hidden = false;
       return;
     }
